@@ -1,0 +1,21 @@
+
+[project]
+name = "weiser-ai"
+version = "0.1.0"
+description = "Data Quality powered by AI"
+authors = [
+    {name = "Paco Valdez", email = "paco.valdez@berkeley.edu"},
+]
+dependencies = []
+requires-python = ">=3.10"
+readme = "README.md"
+license = {text = "MIT"}
+
+[build-system]
+requires = ["pdm-backend"]
+build-backend = "pdm.backend"
+
+[tool.pdm.dev-dependencies]
+test = [
+    "pytest>=7.4.0",
+]
