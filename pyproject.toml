@@ -6,10 +6,18 @@ description = "Data Quality powered by AI"
 authors = [
     {name = "Paco Valdez", email = "paco.valdez@berkeley.edu"},
 ]
-dependencies = []
+dependencies = [
+    "typer[all]>=0.9.0",
+    "pypika>=0.48.9",
+    "pydantic>=2.5.3",
+    "SQLAlchemy==1.4.50",
+]
 requires-python = ">=3.10"
 readme = "README.md"
 license = {text = "MIT"}
+
+[project.scripts]
+weiser = "weiser.main:app"
 
 [build-system]
 requires = ["pdm-backend"]

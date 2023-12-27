@@ -1,0 +1,32 @@
+version: 1
+datasources:
+  - name: default
+    type: postgresql
+    db_name: myusername
+    user: myusername
+    password: mypassword
+    port: 5432
+    host: localhost
+
+checks:
+  - name: test row_count
+    dataset: orders
+    type: row_count
+    condition: gt
+    threshold: 0
+
+  - name: test numeric
+    dataset: orders
+    type: numeric
+    sql: sum(total)
+    condition: gt
+    threshold: 0
+
+  - name: test numeric between
+    dataset: [orders, orders]
+    type: numeric
+    sql: sum(total)
+    condition: gt
+    threshold: [1, 2]
+
+
