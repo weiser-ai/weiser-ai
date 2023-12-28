@@ -10,7 +10,7 @@ datasources:
 
 checks:
   - name: test row_count
-    dataset: orders
+    dataset: [orders, orders]
     type: row_count
     condition: gt
     threshold: 0
@@ -18,15 +18,15 @@ checks:
   - name: test numeric
     dataset: orders
     type: numeric
-    sql: sum(total)
+    sql: sum(budgeted_amount)
     condition: gt
     threshold: 0
 
   - name: test numeric between
-    dataset: [orders, orders]
+    dataset: orders
     type: numeric
-    sql: sum(total)
-    condition: gt
-    threshold: [1, 2]
+    sql: sum(budgeted_amount)
+    condition: between
+    threshold: [1000, 2000]
 
 

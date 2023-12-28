@@ -1,5 +1,8 @@
+from datetime import datetime
+from typing import Any, List
 from pprint import pprint
 from pypika import Table, Query, functions as fn
+from pypika.terms import LiteralValue
 
 from weiser.loader.models import Check, CheckType, Condition
 from weiser.drivers import BaseDriver
@@ -19,55 +22,72 @@ def apply_condition(value, threshold, condition):
 
 
 class BaseCheck():
-    def __init__(self, check: Check, driver: BaseDriver) -> None:
+    def __init__(self, check: Check, driver: BaseDriver, datasource: str) -> None:
         self.check = check
         self.driver = driver
+        self.datasource = datasource
         pass
 
-    def execute_query(self, q):
+    def execute_query(self, q, verbose):
         engine = self.driver.engine
         with engine.connect() as conn:
             rows = list(conn.execute(str(q)))
             if not len(rows) > 0 and not len(rows[0]) > 0 and not rows[0][0] is None:
                 raise Exception(f'Unexpected result executing check: {self.check.model_dump()}')
+            if verbose:
+                pprint(rows)
             value = rows[0][0]
         return value
-
-
-    def run(self, verbose: bool):
-        raise Exception('Check Run Method Not Implemented Yet')
-
-class CheckNumeric(BaseCheck):
-    def run(self, verbose: bool):
-        pass
     
+    def append_result(self, success:bool, value:Any, results: List[dict], dataset: str, verbose: bool=False):
+        result = self.check.model_dump()
+        result.update({
+            'datasource': self.datasource,
+            'dataset': dataset,
+            'actual_value': value,
+            'success': success,
+            'fail': not success,
+            'run_time': datetime.now().isoformat()
+        })
+        if verbose:
+            pprint(result)
+        results.append(result)
+        return results
 
-class CheckRowCount(BaseCheck):
     def run(self, verbose: bool):
-        query: Query = self.driver.query
         datasets = self.check.dataset
         results = []
         if isinstance(datasets, str):
             datasets = [datasets]
         for dataset in datasets:
             table = Table(dataset)
-            q = query.from_(table).select(fn.Count('*'))
-            if verbose:
-                pprint(q)
-
-            value = self.execute_query(q)
-
+            q = self.get_query(table, verbose)
+            value = self.execute_query(q, verbose)
             success = apply_condition(value, self.check.threshold, self.check.condition) 
-            result = self.check.model_dump()
-            result.update({
-                'actual_value': value,
-                'success': success,
-                'fail': not success
-            })
-            if verbose:
-                pprint(result)
-            results.append(result)
+            self.append_result(success, value, results, dataset, verbose)
+
         return results
+
+    def get_query(self, table: Table, verbose: bool):
+        if verbose:
+            pprint('Called BaseCheck')
+        raise Exception('Get Query Method Not Implemented Yet')
+
+class CheckNumeric(BaseCheck):
+    def get_query(self, table: Table, verbose: bool):
+        query: Query = self.driver.query
+        q = query.from_(table).select(LiteralValue(self.check.sql)).limit(1)
+        if verbose:
+            pprint(q)
+        return q
+
+class CheckRowCount(BaseCheck):
+    def get_query(self, table: Table, verbose: bool):
+        query: Query = self.driver.query
+        q = query.from_(table).select(fn.Count('*')).limit(1)
+        if verbose:
+            pprint(q)
+        return q
             
 
 
@@ -78,8 +98,8 @@ CHECK_TYPE_MAP = {
 
 class CheckFactory():
     @staticmethod
-    def create_check(check: Check, driver: BaseDriver):
+    def create_check(check: Check, driver: BaseDriver, datasource: str):
         check_class = CHECK_TYPE_MAP.get(check.type, None)
         if not check_class:
             raise Exception(f'Check Type {check.type} not implemented yet')
-        return check_class(check, driver)
+        return check_class(check, driver, datasource)

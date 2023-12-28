@@ -17,7 +17,7 @@ def run_checks(config: BaseConfig, connections: dict, verbose=False):
             if datasource not in connections:
                 raise Exception(f'Check <{check.name}>: Datasource {datasource} is not configured. ')
             driver = connections[datasource]
-            check_instance = CheckFactory.create_check(check, driver)
+            check_instance = CheckFactory.create_check(check, driver, datasource)
             results.append({
                             'check_instance': check_instance, 
                             'results': check_instance.run(verbose)
