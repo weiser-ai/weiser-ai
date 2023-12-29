@@ -24,7 +24,8 @@ def run(
     """
     config = load_config(input_config)
     context = pre_run_config(config, verbose)
-    results = run_checks(context['config'], context['connections'], verbose)
+    results = run_checks(context['run_id'], context['config'], 
+                         context['connections'], context['metric_store'], verbose)
     export_results(results, config)
     typer.echo("Finished Run")
 

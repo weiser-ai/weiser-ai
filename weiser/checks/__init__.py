@@ -1,3 +1,5 @@
+import hashlib
+
 from datetime import datetime
 from typing import Any, List
 from pprint import pprint
@@ -6,6 +8,7 @@ from pypika.terms import LiteralValue
 
 from weiser.loader.models import Check, CheckType, Condition
 from weiser.drivers import BaseDriver
+from weiser.drivers.metric_stores import MetricStoreDB
 
 def apply_condition(value, threshold, condition):
     if condition == Condition.ge:
@@ -22,11 +25,27 @@ def apply_condition(value, threshold, condition):
 
 
 class BaseCheck():
-    def __init__(self, check: Check, driver: BaseDriver, datasource: str) -> None:
+    def __init__(self, run_id: str, check: Check, driver: BaseDriver, 
+                 datasource: str, metric_store: MetricStoreDB) -> None:
+        self.run_id = run_id
         self.check = check
         self.driver = driver
         self.datasource = datasource
+        self.metric_store = metric_store
         pass
+
+    def generate_check_id(self, dataset):
+        encode = lambda s: str(s).encode('utf-8')
+        m = hashlib.sha256()
+        # Run ID contains the time dimension
+        m.update(encode(self.run_id))
+        # Each check is run once for each datasource defined
+        m.update(encode(self.datasource))
+        # Each check is run for each dataset defined
+        m.update(encode(dataset))
+        # Each check name is unique across runs
+        m.update(encode(self.check.name))
+        return m.hexdigest()
 
     def execute_query(self, q, verbose):
         engine = self.driver.engine
@@ -42,15 +61,18 @@ class BaseCheck():
     def append_result(self, success:bool, value:Any, results: List[dict], dataset: str, verbose: bool=False):
         result = self.check.model_dump()
         result.update({
+            'check_id': self.generate_check_id(dataset),
             'datasource': self.datasource,
             'dataset': dataset,
             'actual_value': value,
             'success': success,
             'fail': not success,
+            'run_id': self.run_id,
             'run_time': datetime.now().isoformat()
         })
         if verbose:
             pprint(result)
+        self.metric_store.insert_results(result)
         results.append(result)
         return results
 
@@ -98,8 +120,8 @@ CHECK_TYPE_MAP = {
 
 class CheckFactory():
     @staticmethod
-    def create_check(check: Check, driver: BaseDriver, datasource: str):
+    def create_check(run_id: str, check: Check, driver: BaseDriver, datasource: str, metric_store: MetricStoreDB):
         check_class = CHECK_TYPE_MAP.get(check.type, None)
         if not check_class:
             raise Exception(f'Check Type {check.type} not implemented yet')
-        return check_class(check, driver, datasource)
+        return check_class(run_id, check, driver, datasource, metric_store)

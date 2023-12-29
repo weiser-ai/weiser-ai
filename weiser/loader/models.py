@@ -17,6 +17,12 @@ class DBType(str, Enum):
     postgresql = 'postgresql'
     mysql = 'mysql'
 
+class MetricStoreType(str, Enum):
+    duckdb = 'duckdb'
+
+class ConnectionType(str, Enum):
+    metricstore = 'metricstore'
+
 class Condition(str, Enum):
     gt = 'gt'
     ge = 'ge'
@@ -54,9 +60,19 @@ class Datasource(BaseModel):
     class Config:  
         use_enum_values = True
 
+class MetricStore(BaseModel):
+    type: Optional[ConnectionType] = ConnectionType.metricstore
+    db_type: Optional[MetricStoreType] = MetricStoreType.duckdb
+    db_name: Optional[str] = 'metricstore.db'
+    export_path: Optional[str] = 'metrics_%Y%m%d_%H%M%S.%f.parquet'
+
+    class Config:  
+        use_enum_values = True
+
 
 class BaseConfig(BaseModel):
     version: Optional[Version] = Version.v1
     checks: List[Check]
     datasources: List[Datasource]
     includes: Optional[List[str]] = None
+    connections: Optional[List] = [MetricStore()]

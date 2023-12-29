@@ -10,7 +10,7 @@ datasources:
 
 checks:
   - name: test row_count
-    dataset: [orders, orders]
+    dataset: [orders, vendors]
     type: row_count
     condition: gt
     threshold: 0

@@ -16,9 +16,9 @@ def update_namespace(namespace, new_file):
             namespace[key] = namespace[key] + new_file[key]
         elif key in namespace and key in ('includes'): # remove duplicates
             namespace[key] = list(set(namespace[key] + new_file[key]))
-        elif key in ('checks', 'datasources', 'includes'):
+        elif key in ('checks', 'datasources', 'includes', 'connections'):
             namespace[key] = new_file[key]
-        elif key in ('connection'):
+        elif key in ('extras'):
             pass # ignored keys
         else:
             typer.echo(f'Key not supported yet: {key}')
