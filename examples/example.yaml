@@ -2,9 +2,9 @@ version: 1
 datasources:
   - name: default
     type: postgresql
-    db_name: myusername
-    user: myusername
-    password: mypassword
+    db_name: transactions
+    user: postgres
+    password: postgres
     port: 5432
     host: localhost
 
@@ -18,15 +18,25 @@ checks:
   - name: test numeric
     dataset: orders
     type: numeric
-    sql: sum(budgeted_amount)
+    sql: sum(budgeted_amount::numeric::float)
     condition: gt
     threshold: 0
 
   - name: test numeric between
     dataset: orders
     type: numeric
-    sql: sum(budgeted_amount)
+    sql: sum(budgeted_amount::numeric::float)
     condition: between
     threshold: [1000, 2000]
+
+connections:
+  - name: metricstore
+    type: metricstore
+    db_type: postgresql
+    db_name: metricstore
+    user: postgres
+    password: postgres
+    port: 5432
+    host: localhost
 
 

@@ -1,0 +1,54 @@
+
+cubes:
+ -  name: metrics
+    sql: |
+      SELECT *, last_value({CUBE}.actual_value) OVER(PARTITION BY check_id) AS last_check_value
+      FROM metrics
+      WHERE {FILTER_PARAMS.metrics.run_time.filter('run_time')}
+
+    measures:
+      - name: count_success
+        type: count
+        filters:
+          - sql: "{CUBE}.success"
+      
+      - name: count_fail
+        type: count
+        filters:
+          - sql: "{CUBE}.fail"
+      
+      - name: last_value
+        type: max
+        sql: last_check_value
+
+    dimensions:
+      - name: id
+        type: string
+        sql: check_id
+        primary_key: true
+
+      - name: run_time
+        type: time
+        sql: run_time
+      
+      - name: run_id
+        type: string
+        sql: run_id
+
+      - name: check_name
+        type: string
+        sql: name
+
+      - name: dataset
+        type: string
+        sql: dataset
+
+      - name: datasource
+        type: string
+        sql: datasource
+
+      - name: check_type
+        type: string
+        sql: type
+
+ 

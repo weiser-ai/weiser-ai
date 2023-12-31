@@ -12,7 +12,7 @@ def update_namespace(namespace, new_file):
     if namespace is None:
         return new_file
     for key, value in new_file.items():
-        if key in namespace and key in ('checks', 'datasources'):
+        if key in namespace and key in ('checks', 'datasources', 'connections'):
             namespace[key] = namespace[key] + new_file[key]
         elif key in namespace and key in ('includes'): # remove duplicates
             namespace[key] = list(set(namespace[key] + new_file[key]))

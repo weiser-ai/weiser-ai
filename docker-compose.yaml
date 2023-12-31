@@ -1,0 +1,42 @@
+version: '3.9'
+# If using colima as docker runtime on osx, then set WORKDIR so volume mounts work.
+# WORKDIR=`pwd` docker-compose up
+services:
+  postgres:
+    image: postgres:14.2
+    volumes:
+      - ${PWD}/examples/structure.sql:/docker-entrypoint-initdb.d/structure.sql
+      - ${PWD}/postgres-data/:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER:-postgres}
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=${POSTGRES_DB:-example}
+    ports:
+      - 5432:5432
+
+  cube_api:
+    image: cubejs/cube:v0.34.32
+    ports:
+      - 4000:4000
+      - 5433:5433
+    environment:
+      - CUBEJS_LOG_LEVEL=info
+      - DEBUG_LOG=true
+      - CUBEJS_DB_HOST=postgres
+      - CUBEJS_DB_USER=postgres
+      - CUBEJS_DB_NAME=metricstore
+      - CUBEJS_DB_PASS=postgres
+      - CUBEJS_DB_PORT=5432
+      - CUBEJS_API_SECRET=secret1234
+      - CUBEJS_DB_TYPE=postgres
+      # - CUBEJS_EXTERNAL_DEFAULT=true
+      # - CUBEJS_SCHEDULED_REFRESH_DEFAULT=true
+      - CUBEJS_DEV_MODE=true
+      - CUBEJS_PG_SQL_PORT=5433
+      - CUBEJS_SQL_USER=myusername
+      - CUBEJS_SQL_PASSWORD=mypassword
+    volumes:
+      - ${PWD}/metricstore:/cube/conf
+      - ${PWD}/metricstore/schema:/cube/schema
+    # depends_on:
+    #   - postgres

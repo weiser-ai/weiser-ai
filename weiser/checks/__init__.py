@@ -37,8 +37,6 @@ class BaseCheck():
     def generate_check_id(self, dataset):
         encode = lambda s: str(s).encode('utf-8')
         m = hashlib.sha256()
-        # Run ID contains the time dimension
-        m.update(encode(self.run_id))
         # Each check is run once for each datasource defined
         m.update(encode(self.datasource))
         # Each check is run for each dataset defined
@@ -48,16 +46,8 @@ class BaseCheck():
         return m.hexdigest()
 
     def execute_query(self, q, verbose):
-        engine = self.driver.engine
-        with engine.connect() as conn:
-            rows = list(conn.execute(str(q)))
-            if not len(rows) > 0 and not len(rows[0]) > 0 and not rows[0][0] is None:
-                raise Exception(f'Unexpected result executing check: {self.check.model_dump()}')
-            if verbose:
-                pprint(rows)
-            value = rows[0][0]
-        return value
-    
+        return self.driver.execute_query(q, self.check, verbose)
+
     def append_result(self, success:bool, value:Any, results: List[dict], dataset: str, verbose: bool=False):
         result = self.check.model_dump()
         result.update({
