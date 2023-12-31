@@ -18,6 +18,7 @@ class DBType(str, Enum):
     mysql = 'mysql'
 
 class MetricStoreType(str, Enum):
+    # Duckdb local db is not compatible with cube
     duckdb = 'duckdb'
     postgresql = 'postgresql'
 
@@ -65,8 +66,8 @@ class MetricStore(BaseModel):
     name: Optional[str] = None
     uri: Optional[str] = None
     type: Optional[ConnectionType] = ConnectionType.metricstore
-    db_type: Optional[MetricStoreType] = MetricStoreType.duckdb
-    db_name: Optional[str] = 'metricstore/metricstore.db'
+    db_type: Optional[MetricStoreType] = MetricStoreType.postgresql
+    db_name: Optional[str] = None
     user: Optional[str] = None
     host: Optional[str] = None
     db_name: Optional[str] = None
