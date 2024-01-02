@@ -1,7 +1,7 @@
 import hashlib
 
 from datetime import datetime
-from typing import Any, List
+from typing import Any, List, Union
 from pprint import pprint
 from pypika import Table, Query, functions as fn
 from pypika.terms import LiteralValue
@@ -48,7 +48,7 @@ class BaseCheck():
     def execute_query(self, q, verbose):
         return self.driver.execute_query(q, self.check, verbose)
 
-    def append_result(self, success:bool, value:Any, results: List[dict], dataset: str, verbose: bool=False):
+    def append_result(self, success:bool, value:Any, results: List[dict], dataset: str, run_time: datetime, verbose: bool=False):
         result = self.check.model_dump()
         result.update({
             'check_id': self.generate_check_id(dataset),
@@ -58,7 +58,7 @@ class BaseCheck():
             'success': success,
             'fail': not success,
             'run_id': self.run_id,
-            'run_time': datetime.now().isoformat()
+            'run_time': run_time.isoformat()
         })
         if verbose:
             pprint(result)
@@ -76,7 +76,7 @@ class BaseCheck():
             q = self.get_query(table, verbose)
             value = self.execute_query(q, verbose)
             success = apply_condition(value, self.check.threshold, self.check.condition) 
-            self.append_result(success, value, results, dataset, verbose)
+            self.append_result(success, value, results, dataset, datetime.now(), verbose)
 
         return results
 
@@ -108,9 +108,11 @@ CHECK_TYPE_MAP = {
     CheckType.row_count: CheckRowCount,
 }
 
+CHECK_TYPES = Union[BaseCheck, CheckNumeric, CheckRowCount]
+
 class CheckFactory():
     @staticmethod
-    def create_check(run_id: str, check: Check, driver: BaseDriver, datasource: str, metric_store: MetricStoreDB):
+    def create_check(run_id: str, check: Check, driver: BaseDriver, datasource: str, metric_store: MetricStoreDB) -> CHECK_TYPES:
         check_class = CHECK_TYPE_MAP.get(check.type, None)
         if not check_class:
             raise Exception(f'Check Type {check.type} not implemented yet')

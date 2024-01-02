@@ -4,7 +4,7 @@ from typing_extensions import Annotated
 
 from weiser.loader import export_results
 from weiser.loader.config import load_config
-from weiser.runner import pre_run_config, run_checks
+from weiser.runner import pre_run_config, run_checks, generate_sample_data
 
 app = typer.Typer()
 
@@ -31,12 +31,19 @@ def run(
 
 
 @app.command()
-def load():
+def sample(
+    input_config: Annotated[str, typer.Argument(help="The path for the file to read")],
+    check: Annotated[str, typer.Option("--check", "-c", help="Id to populate")],
+    verbose: Annotated[bool, typer.Option("--verbose", "-v", help="Print to stdout the parsed files")] = False):
     """
-    Load the portal gun
+    Generate sample data based on a check id name.
     """
-    typer.echo("Loading portal gun")
-
+    config = load_config(input_config)
+    context = pre_run_config(config, verbose)
+    results = generate_sample_data(check, context['config'], 
+                         context['connections'], context['metric_store'], verbose)
+    export_results(results, config)
+    typer.echo("Finished Run")
 
 if __name__ == "__main__":
     app()
