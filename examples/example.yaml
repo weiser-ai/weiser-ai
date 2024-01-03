@@ -22,6 +22,14 @@ checks:
     condition: gt
     threshold: 0
 
+  - name: test row_count groupby
+    dataset: vendors
+    type: row_count
+    group_by:
+      - tenant_id
+    condition: gt
+    threshold: 0
+
   - name: test numeric between
     dataset: orders
     type: numeric

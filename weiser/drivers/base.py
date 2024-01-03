@@ -44,6 +44,5 @@ class BaseDriver():
                 raise Exception(f'Unexpected result executing check: {check.model_dump()}')
             if verbose:
                 pprint(rows)
-            value = rows[0][0]
-        return value
+        return rows
 

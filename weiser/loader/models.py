@@ -39,10 +39,12 @@ class Check(BaseModel):
     type: Optional[CheckType] = CheckType.numeric
     dataset: Union[str, List[str]]
     
+    description: Optional[str] = None
     sql: Optional[str] = None
     condition: Optional[Condition] = None
     fail: Optional[bool] = False
     threshold: Optional[Union[Union[int, float, Decimal], List[Union[int, float, Decimal]]]] = None
+    group_by: List[str] = []
 
     class Config:  
         use_enum_values = True

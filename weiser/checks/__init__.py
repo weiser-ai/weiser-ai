@@ -33,7 +33,7 @@ class BaseCheck():
         self.metric_store = metric_store
         pass
 
-    def generate_check_id(self, dataset):
+    def generate_check_id(self, check_name, dataset):
         encode = lambda s: str(s).encode('utf-8')
         m = hashlib.sha256()
         # Each check is run once for each datasource defined
@@ -41,7 +41,7 @@ class BaseCheck():
         # Each check is run for each dataset defined
         m.update(encode(dataset))
         # Each check name is unique across runs
-        m.update(encode(self.check.name))
+        m.update(encode(check_name))
         return m.hexdigest()
 
     def execute_query(self, q: Select, verbose: bool=False):
@@ -49,11 +49,14 @@ class BaseCheck():
 
     def append_result(self, success:bool, value:Any, results: List[dict], dataset: str, run_time: datetime, verbose: bool=False):
         result = self.check.model_dump()
+        if self.check.group_by:
+            result['name'] = '_'.join((result['name'], 
+                                      '_'.join(map(lambda pair: '_'.join(pair), zip(self.check.group_by, map(str, value[:-1]))))))
         result.update({
-            'check_id': self.generate_check_id(dataset),
+            'check_id': self.generate_check_id(dataset, result['name']),
             'datasource': self.datasource,
             'dataset': dataset,
-            'actual_value': value,
+            'actual_value': value[-1] if self.check.group_by else value,
             'success': success,
             'fail': not success,
             'run_id': self.run_id,
@@ -72,9 +75,14 @@ class BaseCheck():
             datasets = [datasets]
         for dataset in datasets:
             q = self.get_query(dataset, verbose)
-            value = self.execute_query(q, verbose)
-            success = apply_condition(value, self.check.threshold, self.check.condition) 
-            self.append_result(success, value, results, dataset, datetime.now(), verbose)
+            rows = self.execute_query(q, verbose)
+            if self.check.group_by:
+                for row in rows:
+                    success = apply_condition(row[-1], self.check.threshold, self.check.condition) 
+                    self.append_result(success, row, results, dataset, datetime.now(), verbose)
+            else:
+                success = apply_condition(rows[0][0], self.check.threshold, self.check.condition)
+                self.append_result(success, rows[0][0], results, dataset, datetime.now(), verbose)
 
         return results
 
@@ -82,20 +90,23 @@ class BaseCheck():
         if verbose:
             pprint('Called BaseCheck')
         raise Exception('Get Query Method Not Implemented Yet')
+    
+    def build_query(self, select_stmnt: List[Any], table:str, limit: int=1, verbose: bool=False):
+        if self.check.group_by:
+            q = Select().from_(table).select(*(self.check.group_by + select_stmnt)).group_by(*self.check.group_by)
+        else:
+            q = Select().from_(table).select(*select_stmnt).limit(1)
+        if verbose:
+            pprint(q.sql(pretty=True))
+        return q
 
 class CheckNumeric(BaseCheck):
     def get_query(self, table: str, verbose: bool) -> Select:
-        q = Select().from_(table).select(self.check.sql).limit(1)
-        if verbose:
-            pprint(q.sql(pretty=True))
-        return q
+        return self.build_query([self.check.sql,], table, verbose=verbose)
 
 class CheckRowCount(BaseCheck):
     def get_query(self, table: str, verbose: bool):
-        q = Select().from_(table).select('COUNT(*)').limit(1)
-        if verbose:
-            pprint(q.sql(pretty=True))
-        return q
+        return self.build_query(['COUNT(*)',], table, verbose=verbose)
             
 
 
