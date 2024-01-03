@@ -12,7 +12,7 @@ class PostgresMetricStore():
             uri = URL.create(
                 metric_store.db_type,
                 username=metric_store.user,
-                password=metric_store.password,
+                password=metric_store.password.get_secret_value(),
                 host=metric_store.host,
                 database=metric_store.db_name,
             )

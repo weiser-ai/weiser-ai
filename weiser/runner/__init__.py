@@ -68,7 +68,7 @@ def generate_sample_data(check_name: str, config: BaseConfig, connections: dict,
                                     })
     return results
 
-def pre_run_config(config: dict, verbose=False) -> dict:
+def pre_run_config(config: dict, compile_only: bool=False, verbose: bool=False) -> dict:
     base_config = BaseConfig(**config)
     metric_store = None
     for config_conn in base_config.connections:
@@ -84,6 +84,8 @@ def pre_run_config(config: dict, verbose=False) -> dict:
     }
     if verbose:
         pprint(json.loads(base_config.model_dump_json()))
+    if compile_only:
+        return context
     for connection in base_config.datasources:
         context['connections'][connection.name] = DriverFactory.create_driver(connection)
         engine = context['connections'][connection.name].engine

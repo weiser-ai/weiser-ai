@@ -27,7 +27,7 @@ class BaseDriver():
             data_source.uri = URL.create(
                 data_source.type,
                 username=data_source.user,
-                password=data_source.password,
+                password=data_source.password.get_secret_value(),
                 host=data_source.host,
                 database=data_source.db_name,
             )

@@ -3,7 +3,7 @@ from decimal import Decimal
 from enum import Enum, IntEnum
 from typing import Optional, Union, List
 
-from pydantic import BaseModel
+from pydantic import BaseModel, SecretStr
 
 
 class Version(IntEnum):
@@ -58,7 +58,7 @@ class Datasource(BaseModel):
     user: Optional[str] = None
     host: Optional[str] = None
     db_name: Optional[str] = None
-    password: Optional[str] = None
+    password: Optional[SecretStr] = None
     port: Optional[int] = None
 
     class Config:  
@@ -73,7 +73,7 @@ class MetricStore(BaseModel):
     user: Optional[str] = None
     host: Optional[str] = None
     db_name: Optional[str] = None
-    password: Optional[str] = None
+    password: Optional[SecretStr] = None
     port: Optional[int] = None
     export_path: Optional[str] = 'metrics_%Y%m%d_%H%M%S.%f.parquet'
 
