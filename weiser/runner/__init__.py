@@ -39,7 +39,7 @@ def generate_sample_data(check_name: str, config: BaseConfig, connections: dict,
                 check.datasource = [check.datasource]
             for i in range((end_date - start_date).days + 1):
                 dt = start_date + timedelta(days=i)
-                run_id = uuid.uuid4()
+                run_id = str(uuid.uuid4())
 
                 for datasource in check.datasource:
                     if datasource not in connections:
@@ -79,7 +79,7 @@ def pre_run_config(config: dict, verbose=False) -> dict:
         'config': base_config,
         'connections': {},
         'metric_store': MetricStoreFactory.create_driver(metric_store),
-        'run_id': uuid.uuid4(),
+        'run_id': str(uuid.uuid4()),
         'run_ts': datetime.now()
     }
     if verbose:

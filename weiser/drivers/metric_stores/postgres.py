@@ -1,7 +1,6 @@
 from sqlalchemy import create_engine
 from sqlalchemy.engine import URL
-from pypika import PostgreSQLQuery
-from pypika import Table
+from sqlglot.expressions import insert, values
 from typing import List, Tuple
 
 from weiser.loader.models import MetricStore
@@ -47,21 +46,21 @@ class PostgresMetricStore():
                 record['threshold'] = None
             elif 'threshold_list' not in record:
                 record['threshold_list'] = None
-            metrics = Table('metrics')
-            q = PostgreSQLQuery.into(metrics).insert(
-                record['actual_value'],
-                record['check_id'],
-                record['condition'],
-                record['dataset'],
-                record['datasource'],
-                record['fail'],
-                record['name'],
-                record['run_id'],
-                record['run_time'],
-                record['sql'],
-                record['success'],
-                record['threshold'],
-                record['threshold_list'],
-                record['type'],
+            q = insert(values([(
+                        record['actual_value'],
+                        record['check_id'],
+                        record['condition'],
+                        record['dataset'],
+                        record['datasource'],
+                        record['fail'],
+                        record['name'],
+                        record['run_id'],
+                        record['run_time'],
+                        record['sql'],
+                        record['success'],
+                        record['threshold'],
+                        record['threshold_list'],
+                        record['type'],
+                    )]), 'metrics'
                 )
-            conn.execute(str(q))
+            conn.execute(q.sql(dialect='postgres'))

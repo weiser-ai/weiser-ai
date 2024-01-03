@@ -3,8 +3,7 @@ import hashlib
 from datetime import datetime
 from typing import Any, List, Union
 from pprint import pprint
-from pypika import Table, Query, functions as fn
-from pypika.terms import LiteralValue
+from sqlglot.expressions import Select
 
 from weiser.loader.models import Check, CheckType, Condition
 from weiser.drivers import BaseDriver
@@ -45,7 +44,7 @@ class BaseCheck():
         m.update(encode(self.check.name))
         return m.hexdigest()
 
-    def execute_query(self, q, verbose):
+    def execute_query(self, q: Select, verbose: bool=False):
         return self.driver.execute_query(q, self.check, verbose)
 
     def append_result(self, success:bool, value:Any, results: List[dict], dataset: str, run_time: datetime, verbose: bool=False):
@@ -72,33 +71,30 @@ class BaseCheck():
         if isinstance(datasets, str):
             datasets = [datasets]
         for dataset in datasets:
-            table = Table(dataset)
-            q = self.get_query(table, verbose)
+            q = self.get_query(dataset, verbose)
             value = self.execute_query(q, verbose)
             success = apply_condition(value, self.check.threshold, self.check.condition) 
             self.append_result(success, value, results, dataset, datetime.now(), verbose)
 
         return results
 
-    def get_query(self, table: Table, verbose: bool):
+    def get_query(self, table: str, verbose: bool):
         if verbose:
             pprint('Called BaseCheck')
         raise Exception('Get Query Method Not Implemented Yet')
 
 class CheckNumeric(BaseCheck):
-    def get_query(self, table: Table, verbose: bool):
-        query: Query = self.driver.query
-        q = query.from_(table).select(LiteralValue(self.check.sql)).limit(1)
+    def get_query(self, table: str, verbose: bool) -> Select:
+        q = Select().from_(table).select(self.check.sql).limit(1)
         if verbose:
-            pprint(q)
+            pprint(q.sql(pretty=True))
         return q
 
 class CheckRowCount(BaseCheck):
-    def get_query(self, table: Table, verbose: bool):
-        query: Query = self.driver.query
-        q = query.from_(table).select(fn.Count('*')).limit(1)
+    def get_query(self, table: str, verbose: bool):
+        q = Select().from_(table).select('COUNT(*)').limit(1)
         if verbose:
-            pprint(q)
+            pprint(q.sql(pretty=True))
         return q
             
 

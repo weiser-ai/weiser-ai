@@ -1,6 +1,6 @@
 from typing import List, Tuple
 import duckdb
-from pypika import Table, Query
+from sqlglot.expressions import insert, values
 from weiser.loader.models import MetricStore
 
 class DuckDBMetricStore():
@@ -31,21 +31,21 @@ class DuckDBMetricStore():
                 record['threshold'] = None
             elif 'threshold_list' not in record:
                 record['threshold_list'] = None
-            metrics = Table('metrics')
-            q = Query.into(metrics).insert(
-                record['actual_value'],
-                record['check_id'],
-                record['condition'],
-                record['dataset'],
-                record['datasource'],
-                record['fail'],
-                record['name'],
-                record['run_id'],
-                record['run_time'],
-                record['sql'],
-                record['success'],
-                record['threshold'],
-                record['threshold_list'],
-                record['type'],
+            q = insert(values([(
+                        record['actual_value'],
+                        record['check_id'],
+                        record['condition'],
+                        record['dataset'],
+                        record['datasource'],
+                        record['fail'],
+                        record['name'],
+                        record['run_id'],
+                        record['run_time'],
+                        record['sql'],
+                        record['success'],
+                        record['threshold'],
+                        record['threshold_list'],
+                        record['type'],
+                    )]), 'metrics'
                 )
-            conn.sql(str(q))
+            conn.sql(q.sql(dialect='duckdb'))

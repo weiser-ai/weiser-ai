@@ -1,18 +1,23 @@
 from sqlalchemy import create_engine
 from sqlalchemy.engine import URL
 from pprint import pprint
-from pypika import Query, MySQLQuery, MSSQLQuery, PostgreSQLQuery, OracleQuery, VerticaQuery
-from pypika.dialects import SnowflakeQuery
+from typing import Any
+
+from sqlglot.dialects import (
+    BigQuery, ClickHouse, Databricks, Dialect, Doris, Drill, DuckDB, Hive, 
+    MySQL, Oracle, Postgres, Presto, Redshift, Snowflake, Spark, Spark2, SQLite,
+    StarRocks, Tableau, Teradata, Trino
+)
+from sqlglot.expressions import Select
 
 from weiser.loader.models import Datasource
 
-QUERY_TYPE_MAP = {
-    'postgresql': PostgreSQLQuery,
-    'mysql': MySQLQuery,
-    'oracle': OracleQuery,
-    'mssql': MSSQLQuery,
-    'vertica': VerticaQuery,
-    'snowflake': SnowflakeQuery
+DIALECT_TYPE_MAP = {
+    'postgresql': Postgres,
+    'mysql': MySQL,
+    'oracle': Oracle,
+    'snowflake': Snowflake,
+    'bigquery': BigQuery
 }
 
 
@@ -29,12 +34,12 @@ class BaseDriver():
         
         self.engine = create_engine(data_source.uri)
 
-        self.query = QUERY_TYPE_MAP.get(data_source.type, Query)
+        self.dialect = DIALECT_TYPE_MAP.get(data_source.type, Dialect)()
 
-    def execute_query(self, q, check, verbose):
+    def execute_query(self, q: Select, check: Any, verbose: bool=False):
         engine = self.engine
         with engine.connect() as conn:
-            rows = list(conn.execute(str(q)))
+            rows = list(conn.execute(q.sql(dialect=self.dialect)))
             if not len(rows) > 0 and not len(rows[0]) > 0 and not rows[0][0] is None:
                 raise Exception(f'Unexpected result executing check: {check.model_dump()}')
             if verbose:
