@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import List, Tuple
 import duckdb
 from sqlglot.expressions import insert, values
@@ -5,7 +6,10 @@ from weiser.loader.models import MetricStore
 
 class DuckDBMetricStore():
     def __init__(self, config: MetricStore) -> None:
+        self.config = config
         self.db_name = config.db_name
+        if not self.db_name:
+            self.db_name = './metricstore.db'
         with duckdb.connect(self.db_name) as conn:
             conn.sql("""CREATE TABLE IF NOT EXISTS metrics (
                      actual_value DOUBLE,
@@ -49,3 +53,13 @@ class DuckDBMetricStore():
                     )]), 'metrics'
                 )
             conn.sql(q.sql(dialect='duckdb'))
+
+    def export_results(self, run_id):
+        with duckdb.connect(self.db_name) as conn:
+            conn.sql('INSTALL httpfs;')
+            conn.sql('LOAD httpfs;')
+            conn.sql(f"SET s3_url_style='path'")
+            conn.sql(f"SET s3_endpoint = '{self.config.s3_endpoint}'")
+            conn.sql(f"SET s3_access_key_id = '{self.config.s3_access_key}'")
+            conn.sql(f"SET s3_secret_access_key = '{self.config.s3_secret_access_key}'")
+            conn.sql(f"COPY (SELECT * FROM metrics WHERE run_id='{run_id}') TO 's3://{self.config.s3_bucket}/metrics/{run_id}.parquet' (FORMAT 'parquet');")

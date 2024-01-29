@@ -64,3 +64,6 @@ class PostgresMetricStore():
                     )]), 'metrics'
                 )
             conn.execute(q.sql(dialect='postgres'))
+
+    def export_results(self, run_id):
+        pass

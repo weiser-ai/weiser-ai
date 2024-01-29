@@ -163,3 +163,4 @@ cython_debug/
 postgres-data/
 .cubestore/
 metricstore.db
+minio_data/

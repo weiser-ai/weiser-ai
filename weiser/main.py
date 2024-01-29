@@ -2,7 +2,7 @@ import typer
 
 from typing_extensions import Annotated
 
-from weiser.loader import export_results
+from weiser.loader.export import export_results
 from weiser.loader.config import load_config
 from weiser.runner import pre_run_config, run_checks, generate_sample_data
 
@@ -26,7 +26,7 @@ def run(
     context = pre_run_config(config, verbose=verbose)
     results = run_checks(context['run_id'], context['config'], 
                          context['connections'], context['metric_store'], verbose)
-    export_results(results, config)
+    export_results(context['run_id'], context['metric_store'])
     typer.echo("Finished Run")
 
 @app.command()
@@ -53,7 +53,7 @@ def sample(
     context = pre_run_config(config, verbose)
     results = generate_sample_data(check, context['config'], 
                          context['connections'], context['metric_store'], verbose)
-    export_results(results, config)
+    export_results(context['run_id'], config)
     typer.echo("Finished Run")
 
 if __name__ == "__main__":

@@ -72,10 +72,13 @@ class MetricStore(BaseModel):
     db_name: Optional[str] = None
     user: Optional[str] = None
     host: Optional[str] = None
-    db_name: Optional[str] = None
     password: Optional[SecretStr] = None
     port: Optional[int] = None
-    export_path: Optional[str] = 'metrics_%Y%m%d_%H%M%S.%f.parquet'
+    s3_access_key: Optional[str] = None
+    s3_secret_access_key: Optional[str] = None
+    s3_endpoint: Optional[str] = None
+    s3_bucket: Optional[str] = None
+    s3_region: Optional[str] = 'us-east-1'
 
     class Config:  
         use_enum_values = True

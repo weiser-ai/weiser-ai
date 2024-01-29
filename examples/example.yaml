@@ -40,11 +40,18 @@ checks:
 connections:
   - name: metricstore
     type: metricstore
-    db_type: postgresql
-    db_name: metricstore
-    user: postgres
-    password: postgres
-    port: 5432
-    host: localhost
+    db_type: duckdb
+    s3_access_key: W1aip9sC0lGDVNRt
+    s3_secret_access_key: yO8atL6eYnLMuoIuZC3yXuawQQbmgYgU
+    s3_endpoint: localhost:9000
+    s3_bucket: metricstore
+  # - name: metricstore
+  #   type: metricstore
+  #   db_type: postgresql
+  #   db_name: metricstore
+  #   user: postgres
+  #   password: postgres
+  #   port: 5432
+  #   host: localhost
 
 
