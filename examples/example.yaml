@@ -37,6 +37,16 @@ checks:
     condition: between
     threshold: [1000, 2000]
 
+  - name: test anomaly
+    # anomaly test should always target metrics metadata dataset
+    dataset: metrics
+    type: anomaly
+    # References Orders row count.
+    check_id: c5cee10898e30edd1c0dde3f24966b4c47890fcf247e5b630c2c156f7ac7ba22
+    condition: between
+    # long tails of normal distribution for Z-score.
+    threshold: [-3.5, 3.5]
+
 connections:
   - name: metricstore
     type: metricstore
@@ -53,5 +63,3 @@ connections:
   #   password: postgres
   #   port: 5432
   #   host: localhost
-
-

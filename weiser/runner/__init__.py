@@ -5,7 +5,7 @@ import uuid
 from datetime import datetime, timedelta
 from pprint import pprint
 
-from weiser.checks import CheckFactory, apply_condition
+from weiser.checks import CheckFactory
 from weiser.loader.models import BaseConfig, ConnectionType, Condition
 from weiser.drivers import DriverFactory
 from weiser.drivers.metric_stores import MetricStoreFactory, MetricStoreDB
@@ -58,7 +58,7 @@ def generate_sample_data(check_name: str, config: BaseConfig, connections: dict,
                         else:
                             delta = int(check_instance.check.threshold / 2)
                             value =  random.randint(check_instance.check.threshold - delta, check_instance.check.threshold + delta)
-                        success = apply_condition(value, check_instance.check.threshold, check_instance.check.condition) 
+                        success = check_instance.apply_condition(value) 
                         check_instance.append_result(success, value, results, dataset, dt, verbose)
 
                         results.append({

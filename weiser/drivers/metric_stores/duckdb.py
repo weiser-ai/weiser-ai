@@ -1,13 +1,15 @@
-from datetime import datetime
-from typing import List, Tuple
+from pprint import pprint
+from typing import List, Tuple, Any
 import duckdb
-from sqlglot.expressions import insert, values
+from sqlglot.expressions import insert, values, Select
+from sqlglot.dialects import DuckDB
 from weiser.loader.models import MetricStore
 
 class DuckDBMetricStore():
     def __init__(self, config: MetricStore) -> None:
         self.config = config
         self.db_name = config.db_name
+        self.dialect = DuckDB
         if not self.db_name:
             self.db_name = './metricstore.db'
         with duckdb.connect(self.db_name) as conn:
@@ -27,6 +29,16 @@ class DuckDBMetricStore():
                      threshold_list DOUBLE[],
                      type VARCHAR
                      )""")
+
+    # Meant for metadata queries, like anomaly detection
+    def execute_query(self, q: Select, check: Any, verbose: bool=False):
+        with duckdb.connect(self.db_name) as conn:
+            rows = conn.sql(q.sql(dialect=self.dialect)).fetchall()
+            if not len(rows) > 0 and not len(rows[0]) > 0 and not rows[0][0] is None:
+                raise Exception(f'Unexpected result executing check: {check.model_dump()}')
+            if verbose:
+                pprint(rows)
+        return rows
             
     def insert_results(self, record):
         with duckdb.connect(self.db_name) as conn:

@@ -1,6 +1,9 @@
+from pprint import pprint
+from typing import Any
 from sqlalchemy import create_engine
 from sqlalchemy.engine import URL
-from sqlglot.expressions import insert, values
+from sqlglot.expressions import insert, values, Select
+from sqlglot.dialects import Postgres
 from typing import List, Tuple
 
 from weiser.loader.models import MetricStore
@@ -20,6 +23,7 @@ class PostgresMetricStore():
             uri = metric_store.uri
         
         self.engine = create_engine(uri)
+        self.dialect = Postgres
 
         with self.engine.connect() as conn:
             conn.execute("""CREATE TABLE IF NOT EXISTS metrics (
@@ -38,7 +42,18 @@ class PostgresMetricStore():
                             threshold_list double precision[],
                             type VARCHAR
                             )""")
-        
+    
+    # Meant for metadata queries, like anomaly detection
+    def execute_query(self, q: Select, check: Any, verbose: bool=False):
+        engine = self.engine
+        with engine.connect() as conn:
+            rows = list(conn.execute(q.sql(dialect=self.dialect)))
+            if not len(rows) > 0 and not len(rows[0]) > 0 and not rows[0][0] is None:
+                raise Exception(f'Unexpected result executing check: {check.model_dump()}')
+            if verbose:
+                pprint(rows)
+        return rows
+    
     def insert_results(self, record):
         with self.engine.connect() as conn:
             if isinstance(record['threshold'], List) or isinstance(record['threshold'], Tuple):

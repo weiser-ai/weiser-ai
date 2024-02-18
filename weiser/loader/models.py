@@ -12,6 +12,7 @@ class Version(IntEnum):
 class CheckType(str, Enum):
     numeric = 'numeric'
     row_count = 'row_count'
+    anomaly = 'anomaly'
 
 class DBType(str, Enum):
     postgresql = 'postgresql'
@@ -45,6 +46,8 @@ class Check(BaseModel):
     fail: Optional[bool] = False
     threshold: Optional[Union[Union[int, float, Decimal], List[Union[int, float, Decimal]]]] = None
     group_by: List[str] = []
+    # Used for metadata checks
+    check_id: str = None
 
     class Config:  
         use_enum_values = True
