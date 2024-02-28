@@ -8,9 +8,15 @@ Data Quality Framework
 pip install weiser-ai
 ```
 
-# Run checks
+# Run test docker-compose image (needed for example tests)
 
-Run checks 
+```bash
+docker-compose up
+```
+
+# Run test checks, it connects to a postgres db from the example docker-compose image
+
+Run checks in verbose mode
 
 ```sh
 weiser run examples/example.yaml -v
