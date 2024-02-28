@@ -1,4 +1,4 @@
-# Weiser AI
+# Weiser
 
 Data Quality Framework
 

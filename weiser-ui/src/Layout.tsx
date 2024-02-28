@@ -13,7 +13,7 @@ const Layout: React.FC = () => {
     <div>
       <nav className="navbar navbar-expand-lg fixed-top navbar-dark bg-blue">
         <a className="navbar-brand mr-auto mr-lg-0" href="#">
-          Weiser AI
+          Weiser
         </a>
         <button
           className="navbar-toggler p-0 border-0"
