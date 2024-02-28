@@ -13,7 +13,7 @@ pip install weiser-ai
 Run checks 
 
 ```sh
-weiser-ai run examples/example.yaml -v
+weiser run examples/example.yaml -v
 ```
 
 
