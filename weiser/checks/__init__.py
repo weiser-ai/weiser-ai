@@ -5,14 +5,17 @@ from weiser.loader.models import Check, CheckType
 from weiser.drivers import BaseDriver
 from weiser.drivers.metric_stores import MetricStoreDB
 from weiser.checks.base import BaseCheck
-from weiser.checks.numeric import CheckNumeric, CheckRowCount
+from weiser.checks.numeric import CheckNumeric, CheckRowCount, CheckSum, CheckMin, CheckMax
 from weiser.checks.anomaly import CheckAnomaly
 
 
 CHECK_TYPE_MAP = {
     CheckType.numeric: CheckNumeric,
     CheckType.row_count: CheckRowCount,
-    CheckType.anomaly: CheckAnomaly
+    CheckType.anomaly: CheckAnomaly,
+    CheckType.sum: CheckSum,
+    CheckType.max: CheckMax,
+    CheckType.min: CheckMin,
 }
 
 CHECK_TYPES = Union[BaseCheck, CheckNumeric, CheckRowCount, CheckAnomaly]

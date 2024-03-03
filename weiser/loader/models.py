@@ -13,6 +13,9 @@ class CheckType(str, Enum):
     numeric = 'numeric'
     row_count = 'row_count'
     anomaly = 'anomaly'
+    sum = 'sum'
+    min = 'min'
+    max = 'max'
 
 class DBType(str, Enum):
     postgresql = 'postgresql'
@@ -33,6 +36,28 @@ class Condition(str, Enum):
     le = 'le'
     between = 'between'
 
+class Granularity(str, Enum):
+    millennium = 'millennium'
+    century = 'century'
+    decade = 'decade'
+    year = 'year'
+    quarter = 'quarter'
+    month = 'month'
+    week = 'week'
+    day = 'day'
+    hour = 'hour'
+    minute = 'minute'
+    second = 'second'
+    milliseconds = 'milliseconds'
+    microseconds = 'microseconds'
+
+
+class TimeGrain(BaseModel):
+    sql: str
+    granularity: Optional[Granularity] = Granularity.day
+    range_start: Optional[str] = None
+    range_end: Optional[str] = None
+
 
 class Check(BaseModel):
     name: str
@@ -46,6 +71,8 @@ class Check(BaseModel):
     fail: Optional[bool] = False
     threshold: Optional[Union[Union[int, float, Decimal], List[Union[int, float, Decimal]]]] = None
     group_by: List[str] = []
+    filter: List[str] = []
+    time_grain: Optional[TimeGrain] = None
     # Used for metadata checks
     check_id: str = None
 

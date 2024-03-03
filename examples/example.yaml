@@ -37,6 +37,16 @@ checks:
     condition: between
     threshold: [1000, 2000]
 
+  - name: test numeric between yearly
+    dataset: orders
+    type: sum
+    sql: budgeted_amount::numeric::float
+    condition: gt
+    threshold: 0
+    time_grain:
+      sql: _updated_at
+      granularity: year
+
   - name: test anomaly
     # anomaly test should always target metrics metadata dataset
     dataset: metrics

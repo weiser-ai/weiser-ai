@@ -74,6 +74,20 @@ Check individual group by values in a check
     threshold: 0
 ```
 
+Time aggregation check with granularity
+
+```yaml
+  - name: test numeric between yearly
+    dataset: orders
+    type: sum
+    sql: budgeted_amount::numeric::float
+    condition: gt
+    threshold: 0
+    time_grain:
+      sql: _updated_at
+      granularity: year
+```
+
 Anomaly detection check
 
 ```yaml
