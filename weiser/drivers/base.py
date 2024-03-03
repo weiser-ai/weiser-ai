@@ -1,27 +1,45 @@
 from sqlalchemy import create_engine
 from sqlalchemy.engine import URL
 from pprint import pprint
-from typing import Any
+from typing import Any, List
 
 from sqlglot.dialects import (
-    BigQuery, ClickHouse, Databricks, Dialect, Doris, Drill, DuckDB, Hive, 
-    MySQL, Oracle, Postgres, Presto, Redshift, Snowflake, Spark, Spark2, SQLite,
-    StarRocks, Tableau, Teradata, Trino
+    BigQuery,
+    ClickHouse,
+    Databricks,
+    Dialect,
+    Doris,
+    Drill,
+    DuckDB,
+    Hive,
+    MySQL,
+    Oracle,
+    Postgres,
+    Presto,
+    Redshift,
+    Snowflake,
+    Spark,
+    Spark2,
+    SQLite,
+    StarRocks,
+    Tableau,
+    Teradata,
+    Trino,
 )
 from sqlglot.expressions import Select
 
 from weiser.loader.models import Datasource
 
 DIALECT_TYPE_MAP = {
-    'postgresql': Postgres,
-    'mysql': MySQL,
-    'oracle': Oracle,
-    'snowflake': Snowflake,
-    'bigquery': BigQuery
+    "postgresql": Postgres,
+    "mysql": MySQL,
+    "oracle": Oracle,
+    "snowflake": Snowflake,
+    "bigquery": BigQuery,
 }
 
 
-class BaseDriver():
+class BaseDriver:
     def __init__(self, data_source: Datasource) -> None:
         if not data_source.uri:
             data_source.uri = URL.create(
@@ -31,18 +49,19 @@ class BaseDriver():
                 host=data_source.host,
                 database=data_source.db_name,
             )
-        
+
         self.engine = create_engine(data_source.uri)
 
         self.dialect = DIALECT_TYPE_MAP.get(data_source.type, Dialect)()
 
-    def execute_query(self, q: Select, check: Any, verbose: bool=False):
+    def execute_query(self, q: Select, check: Any, verbose: bool = False) -> List[Any]:
         engine = self.engine
         with engine.connect() as conn:
             rows = list(conn.execute(q.sql(dialect=self.dialect)))
             if not len(rows) > 0 and not len(rows[0]) > 0 and not rows[0][0] is None:
-                raise Exception(f'Unexpected result executing check: {check.model_dump()}')
+                raise Exception(
+                    f"Unexpected result executing check: {check.model_dump()}"
+                )
             if verbose:
                 pprint(rows)
         return rows
-

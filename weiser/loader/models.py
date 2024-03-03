@@ -9,47 +9,53 @@ from pydantic import BaseModel, SecretStr
 class Version(IntEnum):
     v1 = 1
 
+
 class CheckType(str, Enum):
-    numeric = 'numeric'
-    row_count = 'row_count'
-    anomaly = 'anomaly'
-    sum = 'sum'
-    min = 'min'
-    max = 'max'
+    numeric = "numeric"
+    row_count = "row_count"
+    anomaly = "anomaly"
+    sum = "sum"
+    min = "min"
+    max = "max"
+
 
 class DBType(str, Enum):
-    postgresql = 'postgresql'
-    mysql = 'mysql'
+    postgresql = "postgresql"
+    mysql = "mysql"
+
 
 class MetricStoreType(str, Enum):
     # Duckdb local db is not compatible with cube
-    duckdb = 'duckdb'
-    postgresql = 'postgresql'
+    duckdb = "duckdb"
+    postgresql = "postgresql"
+
 
 class ConnectionType(str, Enum):
-    metricstore = 'metricstore'
+    metricstore = "metricstore"
+
 
 class Condition(str, Enum):
-    gt = 'gt'
-    ge = 'ge'
-    lt = 'le'
-    le = 'le'
-    between = 'between'
+    gt = "gt"
+    ge = "ge"
+    lt = "le"
+    le = "le"
+    between = "between"
+
 
 class Granularity(str, Enum):
-    millennium = 'millennium'
-    century = 'century'
-    decade = 'decade'
-    year = 'year'
-    quarter = 'quarter'
-    month = 'month'
-    week = 'week'
-    day = 'day'
-    hour = 'hour'
-    minute = 'minute'
-    second = 'second'
-    milliseconds = 'milliseconds'
-    microseconds = 'microseconds'
+    millennium = "millennium"
+    century = "century"
+    decade = "decade"
+    year = "year"
+    quarter = "quarter"
+    month = "month"
+    week = "week"
+    day = "day"
+    hour = "hour"
+    minute = "minute"
+    second = "second"
+    milliseconds = "milliseconds"
+    microseconds = "microseconds"
 
 
 class TimeGrain(BaseModel):
@@ -61,22 +67,24 @@ class TimeGrain(BaseModel):
 
 class Check(BaseModel):
     name: str
-    datasource: Optional[Union[str, List[str]]] = 'default'
+    datasource: Optional[Union[str, List[str]]] = "default"
     type: Optional[CheckType] = CheckType.numeric
     dataset: Union[str, List[str]]
-    
+
     description: Optional[str] = None
     sql: Optional[str] = None
     condition: Optional[Condition] = None
     fail: Optional[bool] = False
-    threshold: Optional[Union[Union[int, float, Decimal], List[Union[int, float, Decimal]]]] = None
+    threshold: Optional[
+        Union[Union[int, float, Decimal], List[Union[int, float, Decimal]]]
+    ] = None
     group_by: List[str] = []
     filter: List[str] = []
     time_grain: Optional[TimeGrain] = None
     # Used for metadata checks
     check_id: str = None
 
-    class Config:  
+    class Config:
         use_enum_values = True
 
 
@@ -91,8 +99,9 @@ class Datasource(BaseModel):
     password: Optional[SecretStr] = None
     port: Optional[int] = None
 
-    class Config:  
+    class Config:
         use_enum_values = True
+
 
 class MetricStore(BaseModel):
     name: Optional[str] = None
@@ -108,9 +117,9 @@ class MetricStore(BaseModel):
     s3_secret_access_key: Optional[str] = None
     s3_endpoint: Optional[str] = None
     s3_bucket: Optional[str] = None
-    s3_region: Optional[str] = 'us-east-1'
+    s3_region: Optional[str] = "us-east-1"
 
-    class Config:  
+    class Config:
         use_enum_values = True
 
 

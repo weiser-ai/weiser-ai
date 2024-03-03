@@ -9,7 +9,7 @@ from typing import List, Tuple
 from weiser.loader.models import MetricStore
 
 
-class PostgresMetricStore():
+class PostgresMetricStore:
     def __init__(self, metric_store: MetricStore) -> None:
         if not metric_store.uri:
             uri = URL.create(
@@ -21,12 +21,13 @@ class PostgresMetricStore():
             )
         else:
             uri = metric_store.uri
-        
+
         self.engine = create_engine(uri)
         self.dialect = Postgres
 
         with self.engine.connect() as conn:
-            conn.execute("""CREATE TABLE IF NOT EXISTS metrics (
+            conn.execute(
+                """CREATE TABLE IF NOT EXISTS metrics (
                             actual_value double precision,
                             check_id VARCHAR,
                             condition VARCHAR,
@@ -41,44 +42,55 @@ class PostgresMetricStore():
                             threshold VARCHAR,
                             threshold_list double precision[],
                             type VARCHAR
-                            )""")
-    
+                            )"""
+            )
+
     # Meant for metadata queries, like anomaly detection
-    def execute_query(self, q: Select, check: Any, verbose: bool=False):
+    def execute_query(self, q: Select, check: Any, verbose: bool = False):
         engine = self.engine
         with engine.connect() as conn:
             rows = list(conn.execute(q.sql(dialect=self.dialect)))
             if not len(rows) > 0 and not len(rows[0]) > 0 and not rows[0][0] is None:
-                raise Exception(f'Unexpected result executing check: {check.model_dump()}')
+                raise Exception(
+                    f"Unexpected result executing check: {check.model_dump()}"
+                )
             if verbose:
                 pprint(rows)
         return rows
-    
+
     def insert_results(self, record):
         with self.engine.connect() as conn:
-            if isinstance(record['threshold'], List) or isinstance(record['threshold'], Tuple):
-                record['threshold_list'] = record['threshold']
-                record['threshold'] = None
-            elif 'threshold_list' not in record:
-                record['threshold_list'] = None
-            q = insert(values([(
-                        record['actual_value'],
-                        record['check_id'],
-                        record['condition'],
-                        record['dataset'],
-                        record['datasource'],
-                        record['fail'],
-                        record['name'],
-                        record['run_id'],
-                        record['run_time'],
-                        record['sql'],
-                        record['success'],
-                        record['threshold'],
-                        record['threshold_list'],
-                        record['type'],
-                    )]), 'metrics'
-                )
-            conn.execute(q.sql(dialect='postgres'))
+            if isinstance(record["threshold"], List) or isinstance(
+                record["threshold"], Tuple
+            ):
+                record["threshold_list"] = record["threshold"]
+                record["threshold"] = None
+            elif "threshold_list" not in record:
+                record["threshold_list"] = None
+            q = insert(
+                values(
+                    [
+                        (
+                            record["actual_value"],
+                            record["check_id"],
+                            record["condition"],
+                            record["dataset"],
+                            record["datasource"],
+                            record["fail"],
+                            record["name"],
+                            record["run_id"],
+                            record["run_time"],
+                            record["sql"],
+                            record["success"],
+                            record["threshold"],
+                            record["threshold_list"],
+                            record["type"],
+                        )
+                    ]
+                ),
+                "metrics",
+            )
+            conn.execute(q.sql(dialect="postgres"))
 
     def export_results(self, run_id):
         pass

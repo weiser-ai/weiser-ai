@@ -11,25 +11,43 @@ from weiser.drivers import DriverFactory
 from weiser.drivers.metric_stores import MetricStoreFactory, MetricStoreDB
 
 
-def run_checks(run_id:str, config: BaseConfig, connections: dict, metric_store: MetricStoreDB, verbose=False):
+def run_checks(
+    run_id: str,
+    config: BaseConfig,
+    connections: dict,
+    metric_store: MetricStoreDB,
+    verbose=False,
+):
     results = []
     for check in config.checks:
         if isinstance(check.datasource, str):
             check.datasource = [check.datasource]
         for datasource in check.datasource:
             if datasource not in connections:
-                raise Exception(f'Check <{check.name}>: Datasource {datasource} is not configured. ')
+                raise Exception(
+                    f"Check <{check.name}>: Datasource {datasource} is not configured. "
+                )
             driver = connections[datasource]
-            check_instance = CheckFactory.create_check(run_id, check, driver, datasource, metric_store)
-            results.append({
-                            'check_instance': check_instance, 
-                            'results': check_instance.run(verbose),
-                            'run_id': run_id
-                           })
+            check_instance = CheckFactory.create_check(
+                run_id, check, driver, datasource, metric_store
+            )
+            results.append(
+                {
+                    "check_instance": check_instance,
+                    "results": check_instance.run(verbose),
+                    "run_id": run_id,
+                }
+            )
     return results
 
 
-def generate_sample_data(check_name: str, config: BaseConfig, connections: dict, metric_store: MetricStoreDB, verbose=False):
+def generate_sample_data(
+    check_name: str,
+    config: BaseConfig,
+    connections: dict,
+    metric_store: MetricStoreDB,
+    verbose=False,
+):
     start_date = datetime.now() - timedelta(days=30)
     end_date = datetime.now()
     results = []
@@ -43,54 +61,79 @@ def generate_sample_data(check_name: str, config: BaseConfig, connections: dict,
 
                 for datasource in check.datasource:
                     if datasource not in connections:
-                        raise Exception(f'Check <{check.name}>: Datasource {datasource} is not configured. ')
+                        raise Exception(
+                            f"Check <{check.name}>: Datasource {datasource} is not configured. "
+                        )
                     driver = connections[datasource]
 
-                    check_instance = CheckFactory.create_check(run_id, check, driver, datasource, metric_store)
+                    check_instance = CheckFactory.create_check(
+                        run_id, check, driver, datasource, metric_store
+                    )
                     datasets = check_instance.check.dataset
                     results = []
                     if isinstance(datasets, str):
                         datasets = [datasets]
                     for dataset in datasets:
                         if check_instance.check.condition == Condition.between:
-                            delta = int((check_instance.check.threshold[1] - check_instance.check.threshold[0]) / 2)
-                            value =  random.randint(check_instance.check.threshold[0] - delta, check_instance.check.threshold[1] + delta)
+                            delta = int(
+                                (
+                                    check_instance.check.threshold[1]
+                                    - check_instance.check.threshold[0]
+                                )
+                                / 2
+                            )
+                            value = random.randint(
+                                check_instance.check.threshold[0] - delta,
+                                check_instance.check.threshold[1] + delta,
+                            )
                         else:
                             delta = int(check_instance.check.threshold / 2)
-                            value =  random.randint(check_instance.check.threshold - delta, check_instance.check.threshold + delta)
-                        success = check_instance.apply_condition(value) 
-                        check_instance.append_result(success, value, results, dataset, dt, verbose)
+                            value = random.randint(
+                                check_instance.check.threshold - delta,
+                                check_instance.check.threshold + delta,
+                            )
+                        success = check_instance.apply_condition(value)
+                        check_instance.append_result(
+                            success, value, results, dataset, dt, verbose
+                        )
 
-                        results.append({
-                                        'check_instance': check_instance, 
-                                        'results': check_instance.run(verbose),
-                                        'run_id': run_id
-                                    })
+                        results.append(
+                            {
+                                "check_instance": check_instance,
+                                "results": check_instance.run(verbose),
+                                "run_id": run_id,
+                            }
+                        )
     return results
 
-def pre_run_config(config: dict, compile_only: bool=False, verbose: bool=False) -> dict:
+
+def pre_run_config(
+    config: dict, compile_only: bool = False, verbose: bool = False
+) -> dict:
     base_config = BaseConfig(**config)
     metric_store = None
     for config_conn in base_config.connections:
         if config_conn.type == ConnectionType.metricstore:
             metric_store = config_conn
             break
-    context =  {
-        'config': base_config,
-        'connections': {},
-        'metric_store': MetricStoreFactory.create_driver(metric_store),
-        'run_id': str(uuid.uuid4()),
-        'run_ts': datetime.now()
+    context = {
+        "config": base_config,
+        "connections": {},
+        "metric_store": MetricStoreFactory.create_driver(metric_store),
+        "run_id": str(uuid.uuid4()),
+        "run_ts": datetime.now(),
     }
     if verbose:
         pprint(json.loads(base_config.model_dump_json()))
     if compile_only:
         return context
     for connection in base_config.datasources:
-        context['connections'][connection.name] = DriverFactory.create_driver(connection)
-        engine = context['connections'][connection.name].engine
+        context["connections"][connection.name] = DriverFactory.create_driver(
+            connection
+        )
+        engine = context["connections"][connection.name].engine
         with engine.connect() as conn:
-            conn.execute('SELECT 1')
+            conn.execute("SELECT 1")
             if verbose:
-                pprint(f'Connected to {connection.name}')
+                pprint(f"Connected to {connection.name}")
     return context

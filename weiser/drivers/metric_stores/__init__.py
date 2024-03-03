@@ -5,13 +5,14 @@ from weiser.loader.models import MetricStore, MetricStoreType
 
 QUERY_TYPE_MAP = {
     MetricStoreType.duckdb: DuckDBMetricStore,
-    MetricStoreType.postgresql: PostgresMetricStore
+    MetricStoreType.postgresql: PostgresMetricStore,
 }
 
 MetricStoreDB = Union[DuckDBMetricStore, PostgresMetricStore]
 # MetricStoreDB = DuckDBMetricStore
 
-class MetricStoreFactory():
+
+class MetricStoreFactory:
     @staticmethod
     def create_driver(metric_store: MetricStore) -> MetricStoreDB:
         return QUERY_TYPE_MAP.get(metric_store.db_type, DuckDBMetricStore)(metric_store)
