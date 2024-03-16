@@ -11,7 +11,7 @@ datasources:
 checks:
   - name: test row_count
     dataset: [orders, vendors]
-    type: row_count
+    type: {{ row_count_type }}
     condition: gt
     threshold: 0
 

@@ -2,13 +2,13 @@ import glob
 import typer
 import yaml
 
+from jinja2 import Environment, BaseLoader
 from os.path import abspath, dirname, join
-from pathlib import Path
 
 visited_path = {}
 
 
-def update_namespace(namespace, new_file):
+def update_namespace(namespace, new_file, verbose):
 
     if namespace is None:
         return new_file
@@ -21,19 +21,40 @@ def update_namespace(namespace, new_file):
             namespace[key] = new_file[key]
         elif key in ("extras"):
             pass  # ignored keys
-        else:
+        elif verbose:
             typer.echo(f"Key not supported yet: {key}")
     return namespace
 
 
-def load_config(config_path, namespace=None):
+def load_config(
+    config_path: str,
+    namespace: dict = None,
+    context: dict = None,
+    visited_path: dict = None,
+    verbose: bool = True,
+) -> dict:
+    if visited_path is None:
+        visited_path = {}
+
     file_paths = glob.glob(config_path)
+    if verbose:
+        typer.echo(f"Walking Paths: {file_paths}")
     for file_path in file_paths:
         if file_path in visited_path:
             continue
         visited_path[file_path] = True
         with open(file_path, "r") as stream:
-            data_loaded = yaml.safe_load(stream)
+            if context:
+                data_loaded = yaml.safe_load(
+                    Environment(loader=BaseLoader())
+                    .from_string(stream.read())
+                    .render(context)
+                )
+            else:
+                data_loaded = yaml.safe_load(stream)
+            if verbose:
+                typer.echo(f"Context: {context}")
+                typer.echo(f"Rendered YAML: {data_loaded}")
 
         if "includes" in data_loaded:
             for included_path in data_loaded["includes"]:
@@ -47,7 +68,10 @@ def load_config(config_path, namespace=None):
                     included_path = included_path[1:]
                 root_dir = dirname(abspath(file_path))
                 namespace = load_config(
-                    join(root_dir, included_path), namespace=namespace
+                    join(root_dir, included_path),
+                    namespace=namespace,
+                    visited_path=visited_path,
+                    verbose=verbose,
                 )
-        namespace = update_namespace(namespace, data_loaded)
+        namespace = update_namespace(namespace, data_loaded, verbose)
     return namespace

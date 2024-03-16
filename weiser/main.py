@@ -1,11 +1,17 @@
+import os
 import typer
 
+from dotenv import load_dotenv
 from typing_extensions import Annotated
+
 
 from weiser.loader.export import export_results
 from weiser.loader.config import load_config
 from weiser.runner import pre_run_config, run_checks, generate_sample_data
 
+# Load .env
+load_dotenv()
+# Initialize Typer
 app = typer.Typer()
 
 
@@ -26,7 +32,8 @@ def run(
     """
     Main Command
     """
-    config = load_config(input_config)
+    env_variables = dict(os.environ)
+    config = load_config(input_config, context=env_variables)
     context = pre_run_config(config, verbose=verbose)
     results = run_checks(
         context["run_id"],
