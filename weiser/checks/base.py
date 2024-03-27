@@ -3,8 +3,9 @@ import hashlib
 from datetime import datetime
 from pprint import pprint
 from re import sub
-from sqlglot.expressions import Select
-from typing import Any, List
+from sqlglot import parse_one
+from sqlglot.expressions import Select, Table
+from typing import Any, List, Union
 
 from weiser.loader.models import Check, Condition
 from weiser.drivers import BaseDriver
@@ -45,7 +46,8 @@ class BaseCheck:
     def apply_condition(self, value: Any) -> bool:
         threshold = self.check.threshold
         condition = self.check.condition
-
+        if value is None:
+            return False
         if condition == Condition.ge:
             return value >= threshold
         if condition == Condition.gt:
@@ -58,15 +60,15 @@ class BaseCheck:
             return value >= threshold[0] and value <= threshold[1]
         raise Exception(f"Condition not implemented yet {condition}")
 
-    def generate_check_id(self, check_name: str, dataset: str) -> str:
+    def generate_check_id(self, dataset: str, check_name: str) -> str:
         encode = lambda s: str(s).encode("utf-8")
         m = hashlib.sha256()
         # Each check is run once for each datasource defined
         m.update(encode(self.datasource))
-        # Each check is run for each dataset defined
-        m.update(encode(dataset))
         # Each check name is unique across runs
         m.update(encode(check_name))
+        # Each check is run for each dataset defined
+        m.update(encode(dataset))
         return m.hexdigest()
 
     def execute_query(self, q: Select, verbose: bool = False) -> Any:
@@ -98,9 +100,15 @@ class BaseCheck:
                     ),
                 )
             )
+
+        if isinstance(dataset, str):
+            check_id_dataset = dataset
+        else:
+            check_id_dataset = "_".join(map(str, list(dataset.find_all(Table))))
+
         result.update(
             {
-                "check_id": self.generate_check_id(dataset, result["name"]),
+                "check_id": self.generate_check_id(check_id_dataset, result["name"]),
                 "datasource": self.datasource,
                 "dataset": dataset,
                 "actual_value": (
@@ -124,7 +132,8 @@ class BaseCheck:
         if isinstance(datasets, str):
             datasets = [datasets]
         for dataset in datasets:
-            q = self.get_query(dataset, verbose)
+            exp = self.parse_dataset(dataset)
+            q = self.get_query(exp, verbose)
             rows = self.execute_query(q, verbose)
             if self.check.group_by or self.check.time_grain:
                 for row in rows:
@@ -139,6 +148,12 @@ class BaseCheck:
                 )
 
         return results
+
+    def parse_dataset(self, dataset) -> Union[Table, str]:
+        exp = parse_one(dataset)
+        if list(exp.find_all(Table)):
+            return parse_one(dataset).subquery(alias="dataset_")
+        return dataset
 
     def get_query(self, table: str, verbose: bool) -> Select:
         if verbose:
@@ -165,10 +180,16 @@ class BaseCheck:
         if self.check.group_by:
             select_stmnt = self.check.group_by + select_stmnt
             group_by = group_by + self.check.group_by
+
+        q = Select().from_(table).select(*select_stmnt)
+
+        if self.check.filter:
+            q = q.where(self.check.filter)
+
         if group_by:
-            q = Select().from_(table).select(*select_stmnt).group_by(*group_by)
-        else:
-            q = Select().from_(table).select(*select_stmnt).limit(limit)
+            q = q.group_by(*group_by)
+        else:  # limit only if no group-by.
+            q = q.limit(limit)
 
         if verbose:
             pprint(q.sql(pretty=True))

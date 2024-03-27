@@ -20,7 +20,8 @@ class CheckAnomaly(BaseCheck):
         if isinstance(datasets, str):
             datasets = [datasets]
         for dataset in datasets:
-            q = self.get_query(dataset, verbose)
+            exp = self.parse_dataset(dataset)
+            q = self.get_query(exp, verbose)
             rows = self.execute_query(q, verbose)
             # Algorithm Name: Median Absolute Deviation (MAD)
             # M_i = 0.6745 * (x_i - Median(X) ) / MAD
@@ -61,7 +62,7 @@ class CheckAnomaly(BaseCheck):
                 .select("actual_value")
                 .where(f"check_id = '{self.check.check_id}'")
                 .order_by("run_time ASC")
-                .subquery()
+                .subquery(alias="q0_")
             )
             .select(*select_stmnt)
             .limit(1)

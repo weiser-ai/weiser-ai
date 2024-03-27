@@ -22,6 +22,15 @@ checks:
     condition: gt
     threshold: 0
 
+  - name: test numeric completed
+    dataset: >
+      SELECT * FROM orders o LEFT JOIN orders_status os ON o.order_id = os.order_id
+    type: numeric
+    sql: sum(budgeted_amount::numeric::float)
+    condition: gt
+    threshold: 0
+    filter: status = 'FULFILLED'
+
   - name: test row_count groupby
     dataset: vendors
     type: row_count

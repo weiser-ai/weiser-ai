@@ -87,6 +87,19 @@ Time aggregation check with granularity
     granularity: year
 ```
 
+Custom SQL expression for dataset and filter usage
+
+```yaml
+- name: test numeric completed
+  dataset: >
+    SELECT * FROM orders o LEFT JOIN orders_status os ON o.order_id = os.order_id
+  type: numeric
+  sql: sum(budgeted_amount::numeric::float)
+  condition: gt
+  threshold: 0
+  filter: status = 'FULFILLED'
+```
+
 Anomaly detection check
 
 ```yaml

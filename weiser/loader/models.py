@@ -81,6 +81,7 @@ class Check(BaseModel):
     group_by: List[str] = []
     filter: List[str] = []
     time_grain: Optional[TimeGrain] = None
+    filter: Optional[str] = None
     # Used for metadata checks
     check_id: str = None
 
