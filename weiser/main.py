@@ -9,6 +9,7 @@ from weiser.loader.export import export_results
 from weiser.loader.config import load_config
 from weiser.runner import pre_run_config, run_checks, generate_sample_data
 
+# add sqlglot
 # Load .env
 load_dotenv()
 # Initialize Typer

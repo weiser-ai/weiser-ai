@@ -1,0 +1,66 @@
+version: 1
+datasources:
+  - name: default
+    type: postgresql
+    db_name: {{CUBEJS_SQL_DB_NAME}}
+    user: {{CUBEJS_SQL_USER}}
+    password: {{CUBEJS_SQL_PASSWORD}}
+    port: 5432
+    host: {{CUBEJS_SQL_HOST}}
+
+checks:
+  - name: test row_count
+    dataset: [orders_view]
+    type: row_count
+    condition: gt
+    threshold: 0
+
+  - name: test total_amount
+    dataset: [orders_view]
+    measure: total_amount
+    type: measure
+    condition: gt
+    threshold: 0
+
+  - name: test numeric completed
+    dataset: orders_view
+    measure: total_amount
+    type: sum
+    condition: gt
+    threshold: 0
+    filter: status = 'completed'
+  
+  - name: test row_count groupby
+    dataset: orders_view
+    type: row_count
+    dimensions:
+      - status
+    condition: gt
+    threshold: 0
+
+  - name: test numeric between
+    dataset: orders_view
+    type: numeric
+    measure: sum(total_amount)
+    condition: between
+    threshold: [1000000, 5000000]
+
+  - name: test numeric between yearly
+    dataset: orders_view
+    type: measure
+    measure: total_amount
+    condition: gt
+    threshold: 0
+    time_dimension:
+      name: created_at
+      granularity: year
+
+connections:
+  - name: metricstore
+    type: metricstore
+    db_type: postgresql
+    db_name: metricstore
+    user: postgres
+    password: postgres
+    port: 5432
+    host: localhost

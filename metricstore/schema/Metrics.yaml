@@ -1,9 +1,9 @@
 
 cubes:
  -  name: metrics
-    sql: |
+    sql: >
       SELECT *, last_value(actual_value) OVER(PARTITION BY check_id) AS last_check_value
-      FROM read_parquet('s3://metricstore/metrics/*.parquet') AS metrics_parquet
+      FROM metrics
       WHERE {FILTER_PARAMS.metrics.run_time.filter('run_time')}
 
     measures:

@@ -37,10 +37,10 @@ class BaseCheck:
             ).split()
         ).lower()
 
-    def time_grain_alias(self) -> str:
-        if self.check and self.check.time_grain:
+    def time_dimension_alias(self) -> str:
+        if self.check and self.check.time_dimension:
             return self.snake_case(
-                f"{self.check.time_grain.sql} {self.check.time_grain.granularity}"
+                f"{self.check.time_dimension.name} {self.check.time_dimension.granularity}"
             )
 
     def apply_condition(self, value: Any) -> bool:
@@ -85,17 +85,17 @@ class BaseCheck:
     ) -> List[Any]:
 
         result = self.check.model_dump()
-        if self.check.group_by or self.check.time_grain:
-            group_by_columns = (self.check.group_by if self.check.group_by else []) + (
-                [self.time_grain_alias()] if self.check.time_grain else []
-            )
+        if self.check.dimensions or self.check.time_dimension:
+            dimensions_columns = (
+                self.check.dimensions if self.check.dimensions else []
+            ) + ([self.time_dimension_alias()] if self.check.time_dimension else [])
             result["name"] = "_".join(
                 (
                     result["name"],
                     "_".join(
                         map(
                             lambda pair: "_".join(pair),
-                            zip(group_by_columns, map(str, value[:-1])),
+                            zip(dimensions_columns, map(str, value[:-1])),
                         )
                     ),
                 )
@@ -112,7 +112,9 @@ class BaseCheck:
                 "datasource": self.datasource,
                 "dataset": dataset,
                 "actual_value": (
-                    value[-1] if self.check.group_by or self.check.time_grain else value
+                    value[-1]
+                    if self.check.dimensions or self.check.time_dimension
+                    else value
                 ),
                 "success": success,
                 "fail": not success,
@@ -135,7 +137,7 @@ class BaseCheck:
             exp = self.parse_dataset(dataset)
             q = self.get_query(exp, verbose)
             rows = self.execute_query(q, verbose)
-            if self.check.group_by or self.check.time_grain:
+            if self.check.dimensions or self.check.time_dimension:
                 for row in rows:
                     success = self.apply_condition(row[-1])
                     self.append_result(
@@ -165,29 +167,31 @@ class BaseCheck:
         select_stmnt: List[Any],
         table: str,
         limit: int = 1,
-        group_by: List[Any] = None,
+        dimensions: List[Any] = None,
         verbose: bool = False,
     ) -> Select:
 
-        group_by = [] if group_by is None else group_by
+        dimensions = [] if dimensions is None else dimensions
 
-        if self.check.time_grain:
-            time_grain_alias = self.time_grain_alias()
-            time_grain_sql = f"DATE_TRUNC('{self.check.time_grain.granularity}', {self.check.time_grain.sql})"
-            select_stmnt = [f"{time_grain_sql} AS {time_grain_alias}"] + select_stmnt
-            group_by = group_by + [time_grain_sql]
+        if self.check.time_dimension:
+            time_dimension_alias = self.time_dimension_alias()
+            time_dimension_sql = f"DATE_TRUNC('{self.check.time_dimension.granularity}', {self.check.time_dimension.name})"
+            select_stmnt = [
+                f"{time_dimension_sql} AS {time_dimension_alias}"
+            ] + select_stmnt
+            dimensions = dimensions + [time_dimension_sql]
 
-        if self.check.group_by:
-            select_stmnt = self.check.group_by + select_stmnt
-            group_by = group_by + self.check.group_by
+        if self.check.dimensions:
+            select_stmnt = self.check.dimensions + select_stmnt
+            dimensions = dimensions + self.check.dimensions
 
         q = Select().from_(table).select(*select_stmnt)
 
         if self.check.filter:
             q = q.where(self.check.filter)
 
-        if group_by:
-            q = q.group_by(*group_by)
+        if dimensions:
+            q = q.group_by(*dimensions)
         else:  # limit only if no group-by.
             q = q.limit(limit)
 

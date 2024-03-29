@@ -11,6 +11,7 @@ class Version(IntEnum):
 
 
 class CheckType(str, Enum):
+    measure = "measure"
     numeric = "numeric"
     row_count = "row_count"
     anomaly = "anomaly"
@@ -22,6 +23,7 @@ class CheckType(str, Enum):
 class DBType(str, Enum):
     postgresql = "postgresql"
     mysql = "mysql"
+    cube = "cube"
 
 
 class MetricStoreType(str, Enum):
@@ -58,11 +60,9 @@ class Granularity(str, Enum):
     microseconds = "microseconds"
 
 
-class TimeGrain(BaseModel):
-    sql: str
+class TimeDimension(BaseModel):
+    name: str
     granularity: Optional[Granularity] = Granularity.day
-    range_start: Optional[str] = None
-    range_end: Optional[str] = None
 
 
 class Check(BaseModel):
@@ -72,15 +72,15 @@ class Check(BaseModel):
     dataset: Union[str, List[str]]
 
     description: Optional[str] = None
-    sql: Optional[str] = None
+    measure: Optional[str] = None
     condition: Optional[Condition] = None
     fail: Optional[bool] = False
     threshold: Optional[
         Union[Union[int, float, Decimal], List[Union[int, float, Decimal]]]
     ] = None
-    group_by: List[str] = []
+    dimensions: List[str] = []
     filter: List[str] = []
-    time_grain: Optional[TimeGrain] = None
+    time_dimension: Optional[TimeDimension] = None
     filter: Optional[str] = None
     # Used for metadata checks
     check_id: str = None

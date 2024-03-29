@@ -46,7 +46,7 @@ Custom sql definition
 - name: test numeric
   dataset: orders
   type: numeric
-  sql: sum(budgeted_amount::numeric::float)
+  measure: sum(budgeted_amount::numeric::float)
   condition: gt
   threshold: 0
 ```
@@ -67,7 +67,7 @@ Check individual group by values in a check
 - name: test row_count groupby
   dataset: vendors
   type: row_count
-  group_by:
+  dimensions:
     - tenant_id
   condition: gt
   threshold: 0
@@ -79,11 +79,11 @@ Time aggregation check with granularity
 - name: test numeric gt sum yearly
   dataset: orders
   type: sum
-  sql: budgeted_amount::numeric::float
+  measure: budgeted_amount::numeric::float
   condition: gt
   threshold: 0
-  time_grain:
-    sql: _updated_at
+  time_dimension:
+    name: _updated_at
     granularity: year
 ```
 
@@ -94,7 +94,7 @@ Custom SQL expression for dataset and filter usage
   dataset: >
     SELECT * FROM orders o LEFT JOIN orders_status os ON o.order_id = os.order_id
   type: numeric
-  sql: sum(budgeted_amount::numeric::float)
+  measure: sum(budgeted_amount::numeric::float)
   condition: gt
   threshold: 0
   filter: status = 'FULFILLED'

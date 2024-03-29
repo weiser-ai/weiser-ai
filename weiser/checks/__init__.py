@@ -10,11 +10,13 @@ from weiser.checks.numeric import (
     CheckSum,
     CheckMin,
     CheckMax,
+    CheckMeasure,
 )
 from weiser.checks.anomaly import CheckAnomaly
 
 
 CHECK_TYPE_MAP = {
+    CheckType.measure: CheckMeasure,
     CheckType.numeric: CheckNumeric,
     CheckType.row_count: CheckRowCount,
     CheckType.anomaly: CheckAnomaly,

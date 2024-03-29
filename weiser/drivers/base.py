@@ -28,7 +28,7 @@ from sqlglot.dialects import (
 )
 from sqlglot.expressions import Select
 
-from weiser.loader.models import Datasource
+from weiser.loader.models import Datasource, DBType
 
 DIALECT_TYPE_MAP = {
     "postgresql": Postgres,
@@ -36,6 +36,7 @@ DIALECT_TYPE_MAP = {
     "oracle": Oracle,
     "snowflake": Snowflake,
     "bigquery": BigQuery,
+    "cube": Postgres,
 }
 
 
@@ -43,15 +44,15 @@ class BaseDriver:
     def __init__(self, data_source: Datasource) -> None:
         if not data_source.uri:
             data_source.uri = URL.create(
-                data_source.type,
+                data_source.type if data_source.type != DBType.cube else DBType.postgresql,
                 username=data_source.user,
                 password=data_source.password.get_secret_value(),
                 host=data_source.host,
                 database=data_source.db_name,
             )
 
+        self.data_source = data_source
         self.engine = create_engine(data_source.uri)
-
         self.dialect = DIALECT_TYPE_MAP.get(data_source.type, Dialect)()
 
     def execute_query(self, q: Select, check: Any, verbose: bool = False) -> List[Any]:

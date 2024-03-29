@@ -67,7 +67,7 @@ class DuckDBMetricStore:
                             record["name"],
                             record["run_id"],
                             record["run_time"],
-                            record["sql"],
+                            record["measure"],
                             record["success"],
                             record["threshold"],
                             record["threshold_list"],
