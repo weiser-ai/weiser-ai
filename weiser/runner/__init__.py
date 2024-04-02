@@ -3,7 +3,7 @@ import random
 import uuid
 
 from datetime import datetime, timedelta
-from pprint import pprint
+from rich.progress import Progress
 
 from weiser.checks import CheckFactory
 from weiser.loader.models import BaseConfig, ConnectionType, Condition
@@ -19,25 +19,32 @@ def run_checks(
     verbose=False,
 ):
     results = []
-    for check in config.checks:
-        if isinstance(check.datasource, str):
-            check.datasource = [check.datasource]
-        for datasource in check.datasource:
-            if datasource not in connections:
-                raise Exception(
-                    f"Check <{check.name}>: Datasource {datasource} is not configured. "
+    checks = []
+    with Progress(transient=False) as progress:
+        for check in config.checks:
+            if isinstance(check.datasource, str):
+                check.datasource = [check.datasource]
+            for datasource in check.datasource:
+                if datasource not in connections:
+                    raise Exception(
+                        f"Check <{check.name}>: Datasource {datasource} is not configured. "
+                    )
+                driver = connections[datasource]
+                check_instance = CheckFactory.create_check(
+                    run_id, check, driver, datasource, metric_store
                 )
-            driver = connections[datasource]
-            check_instance = CheckFactory.create_check(
-                run_id, check, driver, datasource, metric_store
-            )
-            results.append(
-                {
-                    "check_instance": check_instance,
-                    "results": check_instance.run(verbose),
-                    "run_id": run_id,
-                }
-            )
+                checks.append(check_instance)
+        if verbose:
+            task = progress.add_task(f"[cyan]Running checks", total=len(checks) * 10)
+        for check_instance in checks:
+            result = {
+                "check_instance": check_instance.check.name,
+                "results": check_instance.run(verbose),
+                "run_id": run_id,
+            }
+            if verbose:
+                progress.update(task, advance=10)
+            results.append(result)
     return results
 
 
@@ -124,7 +131,8 @@ def pre_run_config(
         "run_ts": datetime.now(),
     }
     if verbose:
-        pprint(json.loads(base_config.model_dump_json()))
+        pass
+        # pprint(json.loads(base_config.model_dump_json()))
     if compile_only:
         return context
     for connection in base_config.datasources:
@@ -135,5 +143,6 @@ def pre_run_config(
         with engine.connect() as conn:
             conn.execute("SELECT 1")
             if verbose:
-                pprint(f"Connected to {connection.name}")
+                # pprint(f"Connected to {connection.name}")
+                pass
     return context

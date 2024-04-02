@@ -55,7 +55,8 @@ class PostgresMetricStore:
                     f"Unexpected result executing check: {check.model_dump()}"
                 )
             if verbose:
-                pprint(rows)
+                pass
+                # pprint(rows)
         return rows
 
     def insert_results(self, record):

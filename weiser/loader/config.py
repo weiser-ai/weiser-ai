@@ -1,11 +1,13 @@
 import glob
-import typer
 import yaml
 
 from jinja2 import Environment, BaseLoader
+from rich import print
+from rich.console import Console
+from rich.table import Table
 from os.path import abspath, dirname, join
 
-visited_path = {}
+console = Console()
 
 
 def update_namespace(namespace, new_file, verbose):
@@ -22,7 +24,7 @@ def update_namespace(namespace, new_file, verbose):
         elif key in ("extras"):
             pass  # ignored keys
         elif verbose:
-            typer.echo(f"Key not supported yet: {key}")
+            print(f"Key not supported yet: {key}")
     return namespace
 
 
@@ -31,14 +33,21 @@ def load_config(
     namespace: dict = None,
     context: dict = None,
     visited_path: dict = None,
+    table: Table = None,
     verbose: bool = True,
+    first_run: bool = True,
 ) -> dict:
-    if visited_path is None:
+    print_final_table = False
+    if first_run:
+        first_run = False
+        if verbose:
+            print_final_table = True
+            table = Table("File Path", "# of checks")
         visited_path = {}
 
     file_paths = glob.glob(config_path)
     if verbose:
-        typer.echo(f"Walking Paths: {file_paths}")
+        print(f"Walking Paths: {file_paths}")
     for file_path in file_paths:
         if file_path in visited_path:
             continue
@@ -53,8 +62,7 @@ def load_config(
             else:
                 data_loaded = yaml.safe_load(stream)
             if verbose:
-                typer.echo(f"Context: {context}")
-                typer.echo(f"Rendered YAML: {data_loaded}")
+                table.add_row(str(file_path), str(len(data_loaded["checks"])))
 
         if "includes" in data_loaded:
             for included_path in data_loaded["includes"]:
@@ -71,7 +79,13 @@ def load_config(
                     join(root_dir, included_path),
                     namespace=namespace,
                     visited_path=visited_path,
+                    table=table,
                     verbose=verbose,
+                    first_run=first_run,
                 )
         namespace = update_namespace(namespace, data_loaded, verbose)
+
+    if print_final_table:
+        console.print(table)
+
     return namespace

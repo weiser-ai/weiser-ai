@@ -1,7 +1,7 @@
 import hashlib
 
 from datetime import datetime
-from pprint import pprint
+from rich import print
 from re import sub
 from sqlglot import parse_one
 from sqlglot.expressions import Select, Table
@@ -123,7 +123,7 @@ class BaseCheck:
             }
         )
         if verbose:
-            pprint(result)
+            pass
         self.metric_store.insert_results(result)
         results.append(result)
         return results
@@ -159,7 +159,7 @@ class BaseCheck:
 
     def get_query(self, table: str, verbose: bool) -> Select:
         if verbose:
-            pprint("Called BaseCheck")
+            print("Called BaseCheck")
         raise Exception("Get Query Method Not Implemented Yet")
 
     def build_query(
@@ -196,5 +196,6 @@ class BaseCheck:
             q = q.limit(limit)
 
         if verbose:
-            pprint(q.sql(pretty=True))
+            # print(q.sql(pretty=True))
+            pass
         return q

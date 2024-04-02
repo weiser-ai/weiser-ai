@@ -2,10 +2,11 @@ import os
 import typer
 
 from dotenv import load_dotenv
+from rich import print
 from typing_extensions import Annotated
 
 
-from weiser.loader.export import export_results
+from weiser.loader.export import export_results, print_results
 from weiser.loader.config import load_config
 from weiser.runner import pre_run_config, run_checks, generate_sample_data
 
@@ -14,6 +15,7 @@ from weiser.runner import pre_run_config, run_checks, generate_sample_data
 load_dotenv()
 # Initialize Typer
 app = typer.Typer()
+version = "0.1.0"
 
 
 @app.callback()
@@ -21,6 +23,9 @@ def callback():
     """
     Awesome Portal Gun
     """
+    print(
+        f"[bold red]Running Weiser version:[/bold red] [green]{version}[/green] :boom:\n"
+    )
 
 
 @app.command()
@@ -44,7 +49,8 @@ def run(
         verbose,
     )
     export_results(context["run_id"], context["metric_store"])
-    typer.echo("Finished Run")
+    print_results(results)
+    print("[green]Finished Run[/green] :rocket:")
 
 
 @app.command()
@@ -59,7 +65,7 @@ def compile(
     """
     config = load_config(input_config)
     pre_run_config(config, compile_only=True, verbose=verbose)
-    typer.echo("Finished Config compilation")
+    print("[green]Finished Config compilation[/green] :rocket:")
 
 
 @app.command()
@@ -83,7 +89,7 @@ def sample(
         verbose,
     )
     export_results(context["run_id"], config)
-    typer.echo("Finished Run")
+    print("[green]Finished Generating Sample[/green] :rocket:")
 
 
 if __name__ == "__main__":

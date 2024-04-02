@@ -42,7 +42,8 @@ class DuckDBMetricStore:
                     f"Unexpected result executing check: {check.model_dump()}"
                 )
             if verbose:
-                pprint(rows)
+                # pprint(rows)
+                pass
         return rows
 
     def insert_results(self, record):

@@ -44,7 +44,11 @@ class BaseDriver:
     def __init__(self, data_source: Datasource) -> None:
         if not data_source.uri:
             data_source.uri = URL.create(
-                data_source.type if data_source.type != DBType.cube else DBType.postgresql,
+                (
+                    data_source.type
+                    if data_source.type != DBType.cube
+                    else DBType.postgresql
+                ),
                 username=data_source.user,
                 password=data_source.password.get_secret_value(),
                 host=data_source.host,
@@ -64,5 +68,6 @@ class BaseDriver:
                     f"Unexpected result executing check: {check.model_dump()}"
                 )
             if verbose:
-                pprint(rows)
+                # pprint(rows)
+                pass
         return rows
