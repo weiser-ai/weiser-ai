@@ -39,8 +39,10 @@ class ConnectionType(str, Enum):
 class Condition(str, Enum):
     gt = "gt"
     ge = "ge"
-    lt = "le"
+    lt = "lt"
     le = "le"
+    eq = "eq"
+    neq = "neq"
     between = "between"
 
 
