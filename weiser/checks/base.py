@@ -56,6 +56,10 @@ class BaseCheck:
             return value <= threshold
         if condition == Condition.lt:
             return value < threshold
+        if condition == Condition.eq:
+            return value == threshold
+        if condition == Condition.neq:
+            return value != threshold
         if condition == Condition.between:
             return value >= threshold[0] and value <= threshold[1]
         raise Exception(f"Condition not implemented yet {condition}")
