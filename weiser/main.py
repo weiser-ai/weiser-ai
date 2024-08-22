@@ -34,6 +34,9 @@ def run(
     verbose: Annotated[
         bool, typer.Option("--verbose", "-v", help="Print to stdout the parsed files")
     ] = False,
+    show_ids: Annotated[
+        bool, typer.Option("--show-ids", "-i", help="Print check ids to results table")
+    ] = False,
 ):
     """
     Main Command
@@ -49,7 +52,7 @@ def run(
         verbose,
     )
     export_results(context["run_id"], context["metric_store"])
-    print_results(results)
+    print_results(results, show_ids)
     print("[green]Finished Run[/green] :rocket:")
 
 

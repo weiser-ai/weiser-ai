@@ -1,5 +1,5 @@
 from rich.console import Console
-from rich.table import Table
+from rich.table import Table, Column
 from weiser.drivers.metric_stores import MetricStoreDB
 
 console = Console()
@@ -10,8 +10,8 @@ def export_results(run_id: str, metric_store: MetricStoreDB):
     return True
 
 
-def print_results(results):
-    table = Table(
+def print_results(results, show_ids: bool):
+    columns = [
         "Check Name",
         "Datasource",
         "Dataset",
@@ -20,10 +20,14 @@ def print_results(results):
         "Actual Value",
         "Threshold",
         "Result",
-    )
+    ]
+    if show_ids:
+        # columns = [Column(header="Check Id", overflow="fold")] + columns
+        columns = ["Check Id"] + columns
+    table = Table(*columns)
     for results_item in results:
         for result in results_item["results"]:
-            table.add_row(
+            row = [
                 result.get("name"),
                 result.get("datasource"),
                 result.get("dataset"),
@@ -36,5 +40,8 @@ def print_results(results):
                     else result.get("threshold")
                 ),
                 ":red-x:" if result.get("fail") else ":white_check_mark:",
-            )
+            ]
+            if show_ids:
+                row = [result.get("check_id")] + row
+            table.add_row(*row)
     console.print(table)

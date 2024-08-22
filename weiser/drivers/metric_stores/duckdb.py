@@ -1,6 +1,7 @@
+import duckdb
 from pprint import pprint
 from typing import List, Tuple, Any
-import duckdb
+
 from sqlglot.expressions import insert, values, Select
 from sqlglot.dialects import DuckDB
 from weiser.loader.models import MetricStore
@@ -34,10 +35,21 @@ class DuckDBMetricStore:
             )
 
     # Meant for metadata queries, like anomaly detection
-    def execute_query(self, q: Select, check: Any, verbose: bool = False):
+    def execute_query(
+        self,
+        q: Select,
+        check: Any,
+        verbose: bool = False,
+        validate_results: bool = True,
+    ):
         with duckdb.connect(self.db_name) as conn:
             rows = conn.sql(q.sql(dialect=self.dialect)).fetchall()
-            if not len(rows) > 0 and not len(rows[0]) > 0 and not rows[0][0] is None:
+            if (
+                validate_results
+                and not len(rows) > 0
+                and not len(rows[0]) > 0
+                and not rows[0][0] is None
+            ):
                 raise Exception(
                     f"Unexpected result executing check: {check.model_dump()}"
                 )

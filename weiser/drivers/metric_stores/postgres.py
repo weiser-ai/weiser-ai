@@ -11,6 +11,7 @@ from weiser.loader.models import MetricStore
 
 class PostgresMetricStore:
     def __init__(self, metric_store: MetricStore) -> None:
+        self.config = metric_store
         if not metric_store.uri:
             uri = URL.create(
                 metric_store.db_type,
@@ -23,6 +24,7 @@ class PostgresMetricStore:
             uri = metric_store.uri
 
         self.engine = create_engine(uri)
+        self.db_name = metric_store.db_name
         self.dialect = Postgres
 
         with self.engine.connect() as conn:
@@ -46,11 +48,22 @@ class PostgresMetricStore:
             )
 
     # Meant for metadata queries, like anomaly detection
-    def execute_query(self, q: Select, check: Any, verbose: bool = False):
+    def execute_query(
+        self,
+        q: Select,
+        check: Any,
+        verbose: bool = False,
+        validate_results: bool = True,
+    ):
         engine = self.engine
         with engine.connect() as conn:
             rows = list(conn.execute(q.sql(dialect=self.dialect)))
-            if not len(rows) > 0 and not len(rows[0]) > 0 and not rows[0][0] is None:
+            if (
+                validate_results
+                and not len(rows) > 0
+                and not len(rows[0]) > 0
+                and not rows[0][0] is None
+            ):
                 raise Exception(
                     f"Unexpected result executing check: {check.model_dump()}"
                 )
