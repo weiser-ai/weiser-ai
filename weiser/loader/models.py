@@ -62,6 +62,11 @@ class Granularity(str, Enum):
     microseconds = "microseconds"
 
 
+class S3UrlStyle(str, Enum):
+    vhost = "vhost"
+    path = "path"
+
+
 class TimeDimension(BaseModel):
     name: str
     granularity: Optional[Granularity] = Granularity.day
@@ -121,6 +126,7 @@ class MetricStore(BaseModel):
     s3_endpoint: Optional[str] = None
     s3_bucket: Optional[str] = None
     s3_region: Optional[str] = "us-east-1"
+    s3_url_style: Optional[str] = S3UrlStyle.vhost
 
     class Config:
         use_enum_values = True

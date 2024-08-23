@@ -28,7 +28,7 @@ class CheckAnomaly(BaseCheck):
             if len(result_window) < 5:
                 self.append_result(
                     False,
-                    result_window[-1][2] if len(result_window) > 0 else None,
+                    result_window[-1][0] if len(result_window) > 0 else None,
                     results,
                     dataset,
                     datetime.now(),

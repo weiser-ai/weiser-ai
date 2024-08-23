@@ -1,9 +1,13 @@
 
 cubes:
  -  name: metrics
+    # sql: >
+    #   SELECT *, last_value(actual_value) OVER(PARTITION BY check_id) AS last_check_value
+    #   FROM metrics
+    #   WHERE {FILTER_PARAMS.metrics.run_time.filter('run_time')}
     sql: >
       SELECT *, last_value(actual_value) OVER(PARTITION BY check_id) AS last_check_value
-      FROM metrics
+      FROM read_parquet('s3://weiser-metricstore/metrics/*.parquet') AS metrics
       WHERE {FILTER_PARAMS.metrics.run_time.filter('run_time')}
 
     measures:

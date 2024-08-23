@@ -4,7 +4,7 @@ from typing import List, Tuple, Any
 
 from sqlglot.expressions import insert, values, Select
 from sqlglot.dialects import DuckDB
-from weiser.loader.models import MetricStore
+from weiser.loader.models import MetricStore, S3UrlStyle
 
 
 class DuckDBMetricStore:
@@ -96,8 +96,12 @@ class DuckDBMetricStore:
         with duckdb.connect(self.db_name) as conn:
             conn.sql("INSTALL httpfs;")
             conn.sql("LOAD httpfs;")
-            conn.sql(f"SET s3_url_style='path'")
-            conn.sql(f"SET s3_endpoint = '{self.config.s3_endpoint}'")
+            if self.config.s3_url_style == S3UrlStyle.path:
+                conn.sql(f"SET s3_url_style='{self.config.s3_url_style}'")
+            elif self.config.s3_url_style == S3UrlStyle.vhost:
+                conn.sql(f"SET s3_region = '{self.config.s3_region}'")
+            if self.config.s3_endpoint:
+                conn.sql(f"SET s3_endpoint = '{self.config.s3_endpoint}'")
             conn.sql(f"SET s3_access_key_id = '{self.config.s3_access_key}'")
             conn.sql(f"SET s3_secret_access_key = '{self.config.s3_secret_access_key}'")
             conn.sql(

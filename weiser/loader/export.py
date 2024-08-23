@@ -39,7 +39,7 @@ def print_results(results, show_ids: bool):
                     if result.get("threshold") is None
                     else result.get("threshold")
                 ),
-                ":red-x:" if result.get("fail") else ":white_check_mark:",
+                ":x:" if result.get("fail") else ":white_check_mark:",
             ]
             if show_ids:
                 row = [result.get("check_id")] + row
