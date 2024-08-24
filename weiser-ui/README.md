@@ -1,30 +1,46 @@
-# React + TypeScript + Vite
+# Evidence Template Project
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+## Using Codespaces
 
-Currently, two official plugins are available:
+If you are using this template in Codespaces, click the `Start Evidence` button in the bottom status bar. This will install dependencies and open a preview of your project in your browser - you should get a popup prompting you to open in browser.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react/README.md) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+Or you can use the following commands to get started:
 
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type aware lint rules:
-
-- Configure the top-level `parserOptions` property like this:
-
-```js
-export default {
-  // other rules...
-  parserOptions: {
-    ecmaVersion: 'latest',
-    sourceType: 'module',
-    project: ['./tsconfig.json', './tsconfig.node.json'],
-    tsconfigRootDir: __dirname,
-  },
-}
+```bash
+npm install
+npm run sources
+npm run dev -- --host 0.0.0.0
 ```
 
-- Replace `plugin:@typescript-eslint/recommended` to `plugin:@typescript-eslint/recommended-type-checked` or `plugin:@typescript-eslint/strict-type-checked`
-- Optionally add `plugin:@typescript-eslint/stylistic-type-checked`
-- Install [eslint-plugin-react](https://github.com/jsx-eslint/eslint-plugin-react) and add `plugin:react/recommended` & `plugin:react/jsx-runtime` to the `extends` list
+See [the CLI docs](https://docs.evidence.dev/cli/) for more command information.
+
+**Note:** Codespaces is much faster on the Desktop app. After the Codespace has booted, select the hamburger menu → Open in VS Code Desktop.
+
+## Get Started from VS Code
+
+The easiest way to get started is using the [VS Code Extension](https://marketplace.visualstudio.com/items?itemName=evidence-dev.evidence):
+
+1. Install the extension from the VS Code Marketplace
+2. Open the Command Palette (Ctrl/Cmd + Shift + P) and enter `Evidence: New Evidence Project`
+3. Click `Start Evidence` in the bottom status bar
+
+## Get Started using the CLI
+
+```bash
+npx degit evidence-dev/template my-project
+cd my-project 
+npm install 
+npm run sources
+npm run dev 
+```
+
+Check out the docs for [alternative install methods](https://docs.evidence.dev/getting-started/install-evidence) including Docker, Github Codespaces, and alongside dbt.
+
+
+
+## Learning More
+
+- [Docs](https://docs.evidence.dev/)
+- [Github](https://github.com/evidence-dev/evidence)
+- [Slack Community](https://slack.evidence.dev/)
+- [Evidence Home Page](https://www.evidence.dev)

@@ -165,3 +165,4 @@ postgres-data/
 metricstore.db
 minio_data/
 .vscode/
+.npmrc
