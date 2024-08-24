@@ -11,6 +11,9 @@ cubes:
       WHERE {FILTER_PARAMS.metrics.run_time.filter('run_time')}
 
     measures:
+      - name: count
+        type: count
+
       - name: count_success
         type: count
         filters:
