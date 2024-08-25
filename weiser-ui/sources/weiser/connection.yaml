@@ -1,7 +1,0 @@
-# This file was automatically generated
-name: weiser
-type: postgres
-options:
-  host: valid-elephant.sql.aws-us-west-2.cubecloudapp.dev
-  port: 5432
-  database: valid-elephant

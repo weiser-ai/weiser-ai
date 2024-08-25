@@ -1,0 +1,5 @@
+pandas==2.2.2
+dash==2.17.1
+python-dotenv==1.0.0
+psycopg2==2.9.9
+SQLAlchemy==1.4.50
