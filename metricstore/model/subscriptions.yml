@@ -1,0 +1,65 @@
+cubes:
+  - name: subscriptions
+    sql: >
+      WITH events AS (
+        SELECT 
+          'b' AS event_id, 1 AS subscription_id, 'renewed' AS status, '2024-02-01 00:00:00'::timestamp AS event_time
+        UNION ALL
+        SELECT 
+          'c' AS event_id, 1 AS subscription_id, 'canceled' AS status, '2024-03-01 00:00:00'::timestamp AS event_time
+        UNION ALL
+        SELECT 
+          'a' AS event_id, 1 AS subscription_id, 'started' AS status, '2024-01-01 00:00:00'::timestamp AS event_time
+        UNION ALL
+        SELECT 
+          'd' AS event_id, 2 AS subscription_id, 'canceled' AS status, '2024-02-01 00:00:00'::timestamp AS event_time
+        UNION ALL
+        SELECT 
+          'f' AS event_id, 2 AS subscription_id, 'started' AS status, '2024-01-01 00:00:00'::timestamp AS event_time
+      ), events_transformation_step AS (
+        SELECT
+          subscription_id,
+          last(status) OVER(PARTITION BY subscription_id ORDER BY event_time) AS latest_status,
+          first(event_time) OVER(PARTITION BY subscription_id  ORDER BY event_time) AS subscription_started,
+          last(event_time) OVER(PARTITION BY subscription_id  ORDER BY event_time) AS updated_at,
+          ROW_NUMBER() OVER(PARTITION BY subscription_id ORDER BY event_time DESC) AS rn
+        FROM events
+      ) 
+      SELECT * FROM events_transformation_step WHERE rn=1
+
+    
+    dimensions:
+      - name: subscription_id
+        sql: subscription_id
+        type: number
+        primary_key: true
+
+      - name: latest_status
+        sql: latest_status
+        type: string
+
+      - name: updated_at
+        sql: updated_at
+        type: time
+      
+      - name: subscription_started
+        sql: subscription_started
+        type: time
+
+      - name: latest_status_subquery
+        sql: "{events.latest_status}"
+        type: string
+        sub_query: true
+        propagate_filters_to_sub_query: true
+
+      - name: latest_event_time
+        sql: "{events.latest_event_time}"
+        type: time
+        sub_query: true
+        propagate_filters_to_sub_query: true
+
+    measures:
+      - name: count
+        type: count
+
+      

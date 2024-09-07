@@ -1,0 +1,67 @@
+cubes:
+  - name: events
+    sql: >
+      WITH events AS (
+        SELECT 
+          'b' AS event_id, 1 AS subscription_id, 'renewed' AS status, '2024-02-01 00:00:00'::timestamp AS event_time
+        UNION ALL
+        SELECT 
+          'c' AS event_id, 1 AS subscription_id, 'canceled' AS status, '2024-03-01 00:00:00'::timestamp AS event_time
+        UNION ALL
+        SELECT 
+          'a' AS event_id, 1 AS subscription_id, 'started' AS status, '2024-01-01 00:00:00'::timestamp AS event_time
+        UNION ALL
+        SELECT 
+          'd' AS event_id, 2 AS subscription_id, 'canceled' AS status, '2024-02-01 00:00:00'::timestamp AS event_time
+        UNION ALL
+        SELECT 
+          'f' AS event_id, 2 AS subscription_id, 'started' AS status, '2024-01-01 00:00:00'::timestamp AS event_time
+      ), events_transformation_step AS (
+        SELECT
+          *,
+          ROW_NUMBER() OVER(PARTITION BY subscription_id ORDER BY event_time DESC) AS rn
+        FROM events
+      ) 
+      SELECT * FROM events_transformation_step -- WHERE rn=1
+    
+    joins:
+      - name: subscriptions
+        relationship: many_to_one
+        sql: "{CUBE.subscription_id} = {subscriptions.subscription_id}"
+
+    
+    dimensions:
+      - name: event_id
+        sql: event_id
+        type: string
+        primary_key: true
+
+      - name: subscription_id
+        sql: subscription_id
+        type: number
+
+      - name: status
+        sql: status
+        type: string
+
+      - name: event_time
+        sql: event_time
+        type: time
+      
+    measures:
+      - name: count
+        type: count
+
+      - name: latest_event_time
+        type: max
+        sql: event_time
+        filters:
+          - sql: "{CUBE}.rn = 1"
+
+      - name: latest_status
+        type: max
+        sql: status
+        filters:
+          - sql: "{CUBE}.rn = 1"
+
+      
