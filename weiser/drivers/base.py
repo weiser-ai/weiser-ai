@@ -1,4 +1,4 @@
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 from sqlalchemy.engine import URL
 from pprint import pprint
 from typing import Any, List
@@ -62,7 +62,7 @@ class BaseDriver:
     def execute_query(self, q: Select, check: Any, verbose: bool = False) -> List[Any]:
         engine = self.engine
         with engine.connect() as conn:
-            rows = list(conn.execute(q.sql(dialect=self.dialect)))
+            rows = list(conn.execute(text(q.sql(dialect=self.dialect))))
             if not len(rows) > 0 and not len(rows[0]) > 0 and not rows[0][0] is None:
                 raise Exception(
                     f"Unexpected result executing check: {check.model_dump()}"

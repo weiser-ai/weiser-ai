@@ -2,4 +2,7 @@ pandas==2.2.2
 dash==2.17.1
 python-dotenv==1.0.0
 psycopg2==2.9.9
-SQLAlchemy==1.4.50
+SQLAlchemy==2.0.32
+dash_vega_components==0.11.0
+altair==5.4.1
+plotly==5.23.0

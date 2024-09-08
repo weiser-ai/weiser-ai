@@ -4,6 +4,7 @@ import uuid
 
 from datetime import datetime, timedelta
 from rich.progress import Progress
+from sqlalchemy import text
 
 from weiser.checks import CheckFactory
 from weiser.loader.models import BaseConfig, ConnectionType, Condition
@@ -141,7 +142,7 @@ def pre_run_config(
         )
         engine = context["connections"][connection.name].engine
         with engine.connect() as conn:
-            conn.execute("SELECT 1")
+            conn.execute(text("SELECT 1"))
             if verbose:
                 # pprint(f"Connected to {connection.name}")
                 pass

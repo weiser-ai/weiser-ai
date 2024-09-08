@@ -1,6 +1,6 @@
 from pprint import pprint
 from typing import Any
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 from sqlalchemy.engine import URL
 from sqlglot.expressions import insert, values, Select
 from sqlglot.dialects import Postgres
@@ -29,7 +29,8 @@ class PostgresMetricStore:
 
         with self.engine.connect() as conn:
             conn.execute(
-                """CREATE TABLE IF NOT EXISTS metrics (
+                text(
+                    """CREATE TABLE IF NOT EXISTS metrics (
                             actual_value double precision,
                             check_id VARCHAR,
                             condition VARCHAR,
@@ -45,6 +46,7 @@ class PostgresMetricStore:
                             threshold_list double precision[],
                             type VARCHAR
                             )"""
+                )
             )
 
     # Meant for metadata queries, like anomaly detection
@@ -57,7 +59,7 @@ class PostgresMetricStore:
     ):
         engine = self.engine
         with engine.connect() as conn:
-            rows = list(conn.execute(q.sql(dialect=self.dialect)))
+            rows = list(conn.execute(text(q.sql(dialect=self.dialect))))
             if (
                 validate_results
                 and not len(rows) > 0
@@ -104,7 +106,7 @@ class PostgresMetricStore:
                 ),
                 "metrics",
             )
-            conn.execute(q.sql(dialect="postgres"))
+            conn.execute(text(q.sql(dialect="postgres")))
 
     def export_results(self, run_id):
         pass
