@@ -26,10 +26,6 @@ cubes:
         type: max
         sql: last_check_value
 
-      - name: last_run_time
-        type: max
-        sql: last_run_time
-
     dimensions:
       - name: id
         type: string
@@ -39,6 +35,10 @@ cubes:
       - name: run_time
         type: time
         sql: run_time
+
+      - name: last_run_time
+        type: time
+        sql: last_run_time
       
       - name: run_id
         type: string
