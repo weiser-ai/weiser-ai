@@ -3,8 +3,8 @@ cubes:
  -  name: metrics
     sql: >
       SELECT *, 
-        last_value(actual_value) OVER(PARTITION BY check_id ORDER BY run_time) AS last_check_value,
-        last_value(run_time) OVER(PARTITION BY check_id ORDER BY run_time) AS last_run_time
+        last_value(actual_value) OVER(PARTITION BY check_id ORDER BY run_time ROWS UNBOUNDED PRECEDING) AS last_check_value,
+        last_value(run_time) OVER(PARTITION BY check_id ORDER BY run_time ROWS UNBOUNDED PRECEDING) AS last_run_time
       FROM read_parquet('s3://weiser-metricstore/metrics/*.parquet') AS metrics
       WHERE {FILTER_PARAMS.metrics.run_time.filter('run_time')}
 
