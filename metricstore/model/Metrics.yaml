@@ -2,7 +2,9 @@
 cubes:
  -  name: metrics
     sql: >
-      SELECT *, last_value(actual_value) OVER(PARTITION BY check_id) AS last_check_value
+      SELECT *, 
+        last_value(actual_value) OVER(PARTITION BY check_id ORDER BY run_time) AS last_check_value,
+        last_value(run_time) OVER(PARTITION BY check_id ORDER BY run_time) AS last_run_time
       FROM read_parquet('s3://weiser-metricstore/metrics/*.parquet') AS metrics
       WHERE {FILTER_PARAMS.metrics.run_time.filter('run_time')}
 
@@ -23,6 +25,10 @@ cubes:
       - name: last_value
         type: max
         sql: last_check_value
+
+      - name: last_run_time
+        type: max
+        sql: last_run_time
 
     dimensions:
       - name: id
