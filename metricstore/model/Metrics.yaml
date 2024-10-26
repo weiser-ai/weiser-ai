@@ -26,6 +26,10 @@ cubes:
         type: max
         sql: last_check_value
 
+      - name: actual_value
+        type: max
+        sql: actual_value
+
     dimensions:
       - name: id
         type: string
@@ -67,10 +71,6 @@ cubes:
           (CASE WHEN {CUBE}.success THEN 'success'
                 WHEN {CUBE}.fail    THEN 'fail'
           END)
-
-      - name: actual_value
-        type: number
-        sql: actual_value
 
       - name: condition
         type: string
