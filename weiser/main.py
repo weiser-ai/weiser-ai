@@ -1,5 +1,6 @@
 import os
 import typer
+import datetime
 
 from dotenv import load_dotenv
 from rich import print
@@ -24,7 +25,7 @@ def callback():
     Awesome Portal Gun
     """
     print(
-        f"[bold red]Running Weiser version:[/bold red] [green]{version}[/green] :boom:\n"
+        f"[{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [bold red]Running Weiser version:[/bold red] [green]{version}[/green] :boom:\n"
     )
 
 
@@ -53,7 +54,9 @@ def run(
     )
     export_results(context["run_id"], context["metric_store"])
     print_results(results, show_ids)
-    print("[green]Finished Run[/green] :rocket:")
+    print(
+        f"[{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [green]Finished Run[/green] :rocket:"
+    )
 
 
 @app.command()
@@ -68,7 +71,9 @@ def compile(
     """
     config = load_config(input_config)
     pre_run_config(config, compile_only=True, verbose=verbose)
-    print("[green]Finished Config compilation[/green] :rocket:")
+    print(
+        f"[{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [green]Finished Config compilation[/green] :rocket:"
+    )
 
 
 @app.command()
@@ -92,7 +97,9 @@ def sample(
         verbose,
     )
     export_results(context["run_id"], config)
-    print("[green]Finished Generating Sample[/green] :rocket:")
+    print(
+        f"[{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [green]Finished Generating Sample[/green] :rocket:"
+    )
 
 
 if __name__ == "__main__":

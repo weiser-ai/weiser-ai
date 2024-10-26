@@ -55,6 +55,13 @@ checks:
       name: created_at
       granularity: year
 
+  - name: test always fail
+    dataset: orders_view
+    type: measure
+    measure: total_amount
+    condition: lt
+    threshold: 0
+
   - name: test anomaly
     # anomaly test should always target metrics metadata dataset
     dataset: metrics
