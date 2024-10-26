@@ -68,4 +68,20 @@ cubes:
                 WHEN {CUBE}.fail    THEN 'fail'
           END)
 
+      - name: actual_value
+        type: number
+        sql: actual_value
+
+      - name: condition
+        type: string
+        sql: condition
+
+      - name: threshold
+        sql: threshold
+        type: number
+
+      - name: threshold_list
+        type: string
+        sql: threshold_list
+
  
