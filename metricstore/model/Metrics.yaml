@@ -82,6 +82,6 @@ cubes:
 
       - name: threshold_list
         type: string
-        sql: threshold_list
+        sql: array_to_string(threshold_list, ',')
 
  
