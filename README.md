@@ -18,6 +18,7 @@ Run checks in verbose mode:
 weiser run examples/example.yaml -v
 ```
 
+[![Watch the CLI Demo](https://cdn.loom.com/sessions/thumbnails/ce75ad760c324733a36c637a9f8fe826-401f2819c5918c19-full-play.gif)](https://www.loom.com/share/ce75ad760c324733a36c637a9f8fe826)
 
 Compile checks only in verbose mode:
 
