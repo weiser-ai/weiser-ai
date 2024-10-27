@@ -28,7 +28,7 @@ pip install -r requirements.txt
 streamlit run app.py
 ```
 
-[![Watch the Dashboard Demo](https://cdn.loom.com/sessions/thumbnails/3154b4ce21ea4aaa917066991eaf1fb6-4a96cbce83c54305-full-play.gif)](https://www.loom.com/embed/3154b4ce21ea4aaa917066991eaf1fb6?sid=41205ecb-d0e7-4521-b5cd-6b9bfa3485bc)
+[![Watch the Dashboard Demo](https://cdn.loom.com/sessions/thumbnails/3154b4ce21ea4aaa917066991eaf1fb6-aca9c23da977e100-full-play.gif)](https://www.loom.com/share/3154b4ce21ea4aaa917066991eaf1fb6)
 
 # Check definitions
 
