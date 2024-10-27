@@ -8,9 +8,9 @@ Data Quality Framework
 pip install weiser-ai
 ```
 
-## Run test checks
+## Run example checks
 
-It connects to a postgres db defined at the datasources section in the config file `examples/example.yaml`.
+Connections are defined at the datasources section in the config file see: `examples/example.yaml`.
 
 Run checks in verbose mode:
 
