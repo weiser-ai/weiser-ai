@@ -12,13 +12,18 @@ pip install weiser-ai
 
 It connects to a postgres db defined at the datasources section in the config file `examples/example.yaml`.
 
-````sh
-
-Run checks in verbose mode
+Run checks in verbose mode:
 
 ```sh
 weiser run examples/example.yaml -v
-````
+```
+
+
+Compile checks only in verbose mode:
+
+```sh
+weiser compile examples/example.yaml -v
+```
 
 ## Run dashboard
 
