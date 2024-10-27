@@ -8,25 +8,27 @@ Data Quality Framework
 pip install weiser-ai
 ```
 
-# Test it yourself!
-
-## Run test docker-compose image
-
-A database is needed for example tests.
-
-```bash
-docker-compose up
-```
-
 ## Run test checks
 
-It connects to a postgres db from the example docker-compose image.
+It connects to a postgres db defined at the datasources section in the config file `examples/example.yaml`.
+
+````sh
 
 Run checks in verbose mode
 
 ```sh
 weiser run examples/example.yaml -v
+````
+
+## Run dashboard
+
+```sh
+cd weiser-ui
+pip install -r requirements.txt
+streamlit run app.py
 ```
+
+[![Watch the Dashboard Demo](https://cdn.loom.com/sessions/thumbnails/3154b4ce21ea4aaa917066991eaf1fb6-4a96cbce83c54305-full-play.gif)](https://www.loom.com/embed/3154b4ce21ea4aaa917066991eaf1fb6?sid=41205ecb-d0e7-4521-b5cd-6b9bfa3485bc)
 
 # Check definitions
 
