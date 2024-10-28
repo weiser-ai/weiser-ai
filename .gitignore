@@ -166,3 +166,4 @@ metricstore.db
 minio_data/
 .vscode/
 .npmrc
+.DS_Store

@@ -2,13 +2,21 @@
 
 Data Quality Framework
 
-# Install
+## Introduction
+
+Weiser is a data quality framework designed to help you ensure the integrity and accuracy of your data. It provides a set of tools and checks to validate your data and detect anomalies. It also includes a dashboard to visualize the results of the checks.
+
+## Installation
+
+To install Weiser, use the following command:
 
 ```sh
 pip install weiser-ai
 ```
 
-## Run example checks
+## Usage
+
+### Run example checks
 
 Connections are defined at the datasources section in the config file see: `examples/example.yaml`.
 
@@ -26,7 +34,7 @@ Compile checks only in verbose mode:
 weiser compile examples/example.yaml -v
 ```
 
-## Run dashboard
+### Run dashboard
 
 ```sh
 cd weiser-ui
@@ -36,7 +44,8 @@ streamlit run app.py
 
 [![Watch the Dashboard Demo](https://cdn.loom.com/sessions/thumbnails/3154b4ce21ea4aaa917066991eaf1fb6-aca9c23da977e100-full-play.gif)](https://www.loom.com/share/3154b4ce21ea4aaa917066991eaf1fb6)
 
-# Check definitions
+
+## Configuration
 
 Simple count check defintion
 
@@ -121,3 +130,10 @@ Anomaly detection check
   # long tails of normal distribution for Z-score.
   threshold: [-3.5, 3.5]
 ```
+
+## Contributing
+
+We welcome contributions! 
+
+## License
+This project is licensed under the Apache 2.0 License. See the `LICENSE` file for more details.
