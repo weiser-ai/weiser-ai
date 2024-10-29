@@ -53,9 +53,16 @@ class CheckAnomaly(BaseCheck):
                 )
 
                 if len(result_window) < 5:
+                    actual_value = (
+                        result_window[-1][0] if len(result_window) > 0 else None
+                    )
+                    if dim_value:
+                        result_value = [dim_value, actual_value]
+                    else:
+                        result_value = actual_value
                     self.append_result(
                         False,
-                        result_window[-1][0] if len(result_window) > 0 else None,
+                        result_value,
                         results,
                         dataset,
                         datetime.now(),
