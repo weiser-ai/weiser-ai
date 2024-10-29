@@ -14,13 +14,15 @@ from weiser.runner import pre_run_config, run_checks, generate_sample_data
 
 # Initialize Typer
 app = typer.Typer()
-version = "0.1.2"
+version = "0.1.3"
 
 
 @app.callback()
 def callback():
     """
-    Awesome Portal Gun
+    Weiser is a data quality framework designed to help you ensure the integrity and accuracy of your data.
+    It provides a set of tools and checks to validate your data and detect anomalies.
+    It also includes a dashboard to visualize the results of the checks.
     """
     print(
         f"[{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [bold red]Running Weiser version:[/bold red] [green]{version}[/green] :boom:\n"
