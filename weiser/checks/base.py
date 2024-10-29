@@ -83,7 +83,7 @@ class BaseCheck:
         success: bool,
         value: Any,
         results: List[dict],
-        dataset: str,
+        dataset: Union[Table, str],
         run_time: datetime,
         verbose: bool = False,
     ) -> List[Any]:
@@ -114,7 +114,7 @@ class BaseCheck:
             {
                 "check_id": self.generate_check_id(check_id_dataset, result["name"]),
                 "datasource": self.datasource,
-                "dataset": dataset,
+                "dataset": check_id_dataset,
                 "actual_value": (
                     value[-1]
                     if self.check.dimensions or self.check.time_dimension
@@ -145,12 +145,12 @@ class BaseCheck:
                 for row in rows:
                     success = self.apply_condition(row[-1])
                     self.append_result(
-                        success, row, results, dataset, datetime.now(), verbose
+                        success, row, results, exp, datetime.now(), verbose
                     )
             else:
                 success = self.apply_condition(rows[0][0])
                 self.append_result(
-                    success, rows[0][0], results, dataset, datetime.now(), verbose
+                    success, rows[0][0], results, exp, datetime.now(), verbose
                 )
 
         return results
