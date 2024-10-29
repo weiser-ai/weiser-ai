@@ -115,7 +115,7 @@ class MetricStore(BaseModel):
     name: Optional[str] = None
     uri: Optional[str] = None
     type: Optional[ConnectionType] = ConnectionType.metricstore
-    db_type: Optional[MetricStoreType] = MetricStoreType.postgresql
+    db_type: Optional[MetricStoreType] = MetricStoreType.duckdb
     db_name: Optional[str] = None
     user: Optional[str] = None
     host: Optional[str] = None

@@ -120,10 +120,11 @@ def pre_run_config(
 ) -> dict:
     base_config = BaseConfig(**config)
     metric_store = None
-    for config_conn in base_config.connections:
-        if config_conn.type == ConnectionType.metricstore:
-            metric_store = config_conn
-            break
+    if base_config.connections:
+        for config_conn in base_config.connections:
+            if config_conn.type == ConnectionType.metricstore:
+                metric_store = config_conn
+                break
     context = {
         "config": base_config,
         "connections": {},

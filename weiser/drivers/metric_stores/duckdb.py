@@ -1,6 +1,6 @@
 import boto3
 import duckdb
-from pprint import pprint
+from rich import print
 from typing import List, Tuple, Any
 
 from sqlglot.expressions import insert, values, Select
@@ -117,6 +117,13 @@ class DuckDBMetricStore:
             conn.sql(q.sql(dialect="duckdb"))
 
     def export_results(self, run_id):
+        if (
+            not self.config.s3_bucket
+            or not self.config.s3_access_key
+            or not self.config.s3_secret_access_key
+        ):
+            print("No S3 bucket configured, skipping export")
+            return
         with duckdb.connect(self.db_name) as conn:
             conn.sql("INSTALL httpfs;")
             conn.sql("LOAD httpfs;")
