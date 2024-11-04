@@ -120,7 +120,7 @@ class CheckAnomaly(BaseCheck):
         self,
         select_stmnt: List[Any],
         table: str,
-        limit: int = 100,
+        limit: int = 10000,
         verbose: bool = False,
     ) -> Select:
         if self.check.dimensions:

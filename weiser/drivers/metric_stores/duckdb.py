@@ -17,6 +17,16 @@ class DuckDBMetricStore:
         if not self.db_name:
             self.db_name = "./metricstore.db"
         with duckdb.connect(self.db_name) as conn:
+            conn.sql("INSTALL httpfs;")
+            conn.sql("LOAD httpfs;")
+            if self.config.s3_url_style == S3UrlStyle.path:
+                conn.sql(f"SET s3_url_style='{self.config.s3_url_style}'")
+            elif self.config.s3_url_style == S3UrlStyle.vhost:
+                conn.sql(f"SET s3_region = '{self.config.s3_region}'")
+            if self.config.s3_endpoint:
+                conn.sql(f"SET s3_endpoint = '{self.config.s3_endpoint}'")
+            conn.sql(f"SET s3_access_key_id = '{self.config.s3_access_key}'")
+            conn.sql(f"SET s3_secret_access_key = '{self.config.s3_secret_access_key}'")
             conn.sql(
                 """CREATE TABLE IF NOT EXISTS metrics (
                      actual_value DOUBLE,
@@ -34,6 +44,17 @@ class DuckDBMetricStore:
                      threshold_list DOUBLE[],
                      type VARCHAR
                      )"""
+            )
+            res = conn.sql(
+                """SELECT MAX(run_time) AS run_time FROM metrics"""
+            ).fetchall()
+            last_run_time = "1=1"
+            if res and res[0][0]:
+                last_run_time = f"run_time > '{res[0][0]}'"
+            conn.sql(
+                f"""
+                INSERT INTO metrics SELECT * FROM 's3://{self.config.s3_bucket}/metrics/*.parquet' WHERE {last_run_time};
+                """
             )
 
     # Delete Parquet files
@@ -68,12 +89,9 @@ class DuckDBMetricStore:
     ):
         with duckdb.connect(self.db_name) as conn:
             rows = conn.sql(q.sql(dialect=self.dialect)).fetchall()
-            if (
-                validate_results
-                and not len(rows) > 0
-                and not len(rows[0]) > 0
-                and not rows[0][0] is None
-            ):
+            if validate_results and not len(rows) > 0:
+                if verbose:
+                    print(q.sql(dialect=self.dialect))
                 raise Exception(
                     f"Unexpected result executing check: {check.model_dump()}"
                 )

@@ -14,7 +14,7 @@ from weiser.runner import pre_run_config, run_checks, generate_sample_data
 
 # Initialize Typer
 app = typer.Typer()
-version = "0.1.7"
+version = "0.1.8"
 
 
 @app.callback()
@@ -38,6 +38,9 @@ def run(
     show_ids: Annotated[
         bool, typer.Option("--show-ids", "-i", help="Print check ids to results table")
     ] = False,
+    skip_export: Annotated[
+        bool, typer.Option("--skip-export", "-s", help="Skip exporting results")
+    ] = False,
 ):
     """
     Main Command
@@ -60,7 +63,8 @@ def run(
         context["metric_store"],
         verbose,
     )
-    export_results(context["run_id"], context["metric_store"])
+    if not skip_export:
+        export_results(context["run_id"], context["metric_store"])
     print_results(results, show_ids)
     print(
         f"[{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [green]Finished Run[/green] :rocket:"
@@ -97,6 +101,9 @@ def sample(
     verbose: Annotated[
         bool, typer.Option("--verbose", "-v", help="Print to stdout the parsed files")
     ] = False,
+    skip_export: Annotated[
+        bool, typer.Option("--skip-export", "-s", help="Skip exporting results")
+    ] = False,
 ):
     """
     Generate sample data based on a check id name.
@@ -116,7 +123,8 @@ def sample(
         context["metric_store"],
         verbose,
     )
-    export_results(context["run_id"], config)
+    if not skip_export:
+        export_results(context["run_id"], config)
     print(
         f"[{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [green]Finished Generating Sample[/green] :rocket:"
     )
