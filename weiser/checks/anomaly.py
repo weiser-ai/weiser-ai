@@ -76,7 +76,10 @@ class CheckAnomaly(BaseCheck):
                     )
 
                     rows = conn.execute(
-                        """ SELECT mad(actual_value), median(actual_value), last(actual_value) 
+                        """ SELECT 
+                              COALESCE(mad(actual_value),0), 
+                              COALESCE(median(actual_value),0), 
+                              COALESCE(last(actual_value),0) 
                             FROM (SELECT * FROM results_df ORDER BY run_time ASC) q LIMIT 1"""
                     ).fetchall()
                 # Algorithm Name: Median Absolute Deviation (MAD)
