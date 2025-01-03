@@ -1,12 +1,68 @@
 from rich.console import Console
-from rich.table import Table, Column
+from rich.table import Table
 from weiser.drivers.metric_stores import MetricStoreDB
+from typing import Optional
+from slack_sdk import WebClient
+from slack_sdk.errors import SlackApiError
 
 console = Console()
 
 
-def export_results(run_id: str, metric_store: MetricStoreDB):
-    metric_store.export_results(run_id)
+def export_results(
+    run_id: str,
+    metric_store: MetricStoreDB,
+    slack_channel: Optional[str] = None,
+    slack_token: Optional[str] = None
+):
+    """Export results to storage and optionally to Slack.
+    
+    Args:
+        run_id: The ID of the run to export
+        metric_store: The metric store database
+        slack_channel: Optional Slack channel to post results to
+        slack_token: Optional Slack bot token
+    """
+    # Export to storage
+    results = metric_store.export_results(run_id)
+    
+     # Export to Slack if configured
+    if slack_channel and slack_token:
+        try:
+            client = WebClient(token=slack_token)
+            
+            # Format the results message
+            summary = results['summary']
+            message = [
+                f"*Results Summary for Run {run_id}*",
+                f"• Total Checks: {summary['total_checks']}",
+                f"• Passed: {summary['passed_checks']} ✅",
+                f"• Failed: {summary['failed_checks']} ❌\n"
+            ]
+            
+            # Add failure details if any
+            if results['failures']:
+                message.append("*Failed Checks Details:*")
+                for i, failure in enumerate(results['failures'], 1):
+                    message.append(
+                        f"{i}. *{failure['name']}* ({failure['check_id']})\n"
+                        f"   • Dataset: {failure['dataset']}\n"
+                        f"   • Datasource: {failure['datasource']}\n"
+                        f"   • Condition: {failure['condition']}\n"
+                        f"   • Actual Value: {failure['actual_value']}\n"
+                        f"   • Threshold: {failure['threshold']}\n"
+                        f"   • Type: {failure['type']}\n"
+                    )
+            
+            # Send message to Slack
+            response = client.chat_postMessage(
+                channel=slack_channel,
+                text="\n".join(message),
+                mrkdwn=True
+            )
+            
+        except SlackApiError as e:
+            console.print(f"Error posting to Slack: {e.response['error']}")
+    
     return True
 
 

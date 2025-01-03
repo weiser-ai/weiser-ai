@@ -135,36 +135,86 @@ class DuckDBMetricStore:
             conn.sql(q.sql(dialect="duckdb"))
 
     def export_results(self, run_id):
-        if (
-            not self.config.s3_bucket
-            or not self.config.s3_access_key
-            or not self.config.s3_secret_access_key
-        ):
-            print("No S3 bucket configured, skipping export")
-            return
+        # First get the results
+        results = {
+            'summary': {},
+            'failures': []
+        }
+        
         with duckdb.connect(self.db_name) as conn:
-            conn.sql("INSTALL httpfs;")
-            conn.sql("LOAD httpfs;")
-            if self.config.s3_url_style == S3UrlStyle.path:
-                conn.sql(f"SET s3_url_style='{self.config.s3_url_style}'")
-            elif self.config.s3_url_style == S3UrlStyle.vhost:
-                conn.sql(f"SET s3_region = '{self.config.s3_region}'")
-            if self.config.s3_endpoint:
-                conn.sql(f"SET s3_endpoint = '{self.config.s3_endpoint}'")
-            conn.sql(f"SET s3_access_key_id = '{self.config.s3_access_key}'")
-            conn.sql(f"SET s3_secret_access_key = '{self.config.s3_secret_access_key}'")
-            conn.sql(
-                f"COPY (SELECT * FROM metrics WHERE run_id='{run_id}') TO 's3://{self.config.s3_bucket}/metrics/{run_id}.parquet' (FORMAT 'parquet');"
-            )
-            conn.sql(
-                f"""
-                    COPY (SELECT * FROM 's3://{self.config.s3_bucket}/metrics/*.parquet') TO 's3://{self.config.s3_bucket}/tmp/merged_at_{run_id}.parquet' (FORMAT 'parquet');
-                """
-            )
-            # Delete old Parquet files
-            self.delete_parquet_files("metrics/")
-            # Move the merged file to the final location
-            self.move_file(
-                source_key=f"tmp/merged_at_{run_id}.parquet",
-                destination_key=f"metrics/{run_id}.parquet",
-            )
+            # Get summary statistics
+            summary_query = f"""
+                SELECT 
+                    COUNT(*) as total_checks,
+                    SUM(CASE WHEN success THEN 1 ELSE 0 END) as passed_checks,
+                    SUM(CASE WHEN NOT success THEN 1 ELSE 0 END) as failed_checks
+                FROM metrics 
+                WHERE run_id = '{run_id}'
+            """
+            summary_results = conn.sql(summary_query).fetchone()
+            results['summary'] = {
+                'total_checks': summary_results[0],
+                'passed_checks': summary_results[1],
+                'failed_checks': summary_results[2]
+            }
+            
+            # Get detailed failure information (max 20 rows)
+            failures_query = f"""
+                SELECT 
+                    name,
+                    dataset,
+                    datasource,
+                    check_id,
+                    condition,
+                    actual_value,
+                    threshold,
+                    type
+                FROM metrics 
+                WHERE run_id = '{run_id}' 
+                    AND NOT success 
+                LIMIT 20
+            """
+            failure_results = conn.sql(failures_query).fetchall()
+            columns = ['name', 'dataset', 'datasource', 'check_id', 'condition', 'actual_value', 'threshold', 'type']
+            
+            for row in failure_results:
+                failure_dict = {col: val for col, val in zip(columns, row)}
+                results['failures'].append(failure_dict)
+        
+
+        # Now handle S3 export if configured
+        if (
+            self.config.s3_bucket
+            and self.config.s3_access_key
+            and self.config.s3_secret_access_key
+        ):
+            with duckdb.connect(self.db_name) as conn:
+                conn.sql("INSTALL httpfs;")
+                conn.sql("LOAD httpfs;")
+                if self.config.s3_url_style == S3UrlStyle.path:
+                    conn.sql(f"SET s3_url_style='{self.config.s3_url_style}'")
+                elif self.config.s3_url_style == S3UrlStyle.vhost:
+                    conn.sql(f"SET s3_region = '{self.config.s3_region}'")
+                if self.config.s3_endpoint:
+                    conn.sql(f"SET s3_endpoint = '{self.config.s3_endpoint}'")
+                conn.sql(f"SET s3_access_key_id = '{self.config.s3_access_key}'")
+                conn.sql(f"SET s3_secret_access_key = '{self.config.s3_secret_access_key}'")
+                conn.sql(
+                    f"COPY (SELECT * FROM metrics WHERE run_id='{run_id}') TO 's3://{self.config.s3_bucket}/metrics/{run_id}.parquet' (FORMAT 'parquet');"
+                )
+                conn.sql(
+                    f"""
+                        COPY (SELECT * FROM 's3://{self.config.s3_bucket}/metrics/*.parquet') TO 's3://{self.config.s3_bucket}/tmp/merged_at_{run_id}.parquet' (FORMAT 'parquet');
+                    """
+                )
+                # Delete old Parquet files
+                self.delete_parquet_files("metrics/")
+                # Move the merged file to the final location
+                self.move_file(
+                    source_key=f"tmp/merged_at_{run_id}.parquet",
+                    destination_key=f"metrics/{run_id}.parquet",
+                )
+        else:
+            print("No S3 bucket configured, skipping export")
+
+        return results

@@ -64,7 +64,12 @@ def run(
         verbose,
     )
     if not skip_export:
-        export_results(context["run_id"], context["metric_store"])
+        export_results(
+            context["run_id"],
+            context["metric_store"],
+            slack_channel=config.get("slack_channel"),
+            slack_token=config.get("slack_token")
+        )
     print_results(results, show_ids)
     print(
         f"[{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [green]Finished Run[/green] :rocket:"
