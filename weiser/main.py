@@ -67,12 +67,13 @@ def run(
         export_results(
             context["run_id"],
             context["metric_store"],
-            slack_channel=config.get("slack_channel"),
-            slack_token=config.get("slack_token")
+            slack_url=context["config"].slack_url,
+            run_ts=context["run_ts"],
+            verbose=verbose,
         )
     print_results(results, show_ids)
     print(
-        f"[{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [green]Finished Run[/green] :rocket:"
+        f"[{context['run_ts'].strftime('%Y-%m-%d %H:%M:%S')}] [green]Finished Run[/green] :rocket:"
     )
 
 

@@ -5,7 +5,7 @@
 groups = ["default", "test"]
 strategy = ["cross_platform", "inherit_metadata"]
 lock_version = "4.5.0"
-content_hash = "sha256:3fe584868690098b4e9138438f624e6389d9eb1f45609d8020d786113c07e395"
+content_hash = "sha256:395ab0ff3c0faa698b6c0b47066e2ab90521d85756b8dbf8d4d904a54e431bb1"
 
 [[metadata.targets]]
 requires_python = ">=3.10"
@@ -659,6 +659,17 @@ groups = ["default"]
 files = [
     {file = "six-1.16.0-py2.py3-none-any.whl", hash = "sha256:8abb2f1d86890a2dfb989f9a77cfcfd3e47c2a354b01111771326f8aa26e0254"},
     {file = "six-1.16.0.tar.gz", hash = "sha256:1e61c37477a1626458e36f7b1d82aa5c9b094fa4802892072e49de9c60c4c926"},
+]
+
+[[package]]
+name = "slack-sdk"
+version = "3.34.0"
+requires_python = ">=3.6"
+summary = "The Slack API Platform SDK for Python"
+groups = ["default"]
+files = [
+    {file = "slack_sdk-3.34.0-py2.py3-none-any.whl", hash = "sha256:c61f57f310d85be83466db5a98ab6ae3bb2e5587437b54fa0daa8fae6a0feffa"},
+    {file = "slack_sdk-3.34.0.tar.gz", hash = "sha256:ff61db7012160eed742285ea91f11c72b7a38a6500a7f6c5335662b4bc6b853d"},
 ]
 
 [[package]]

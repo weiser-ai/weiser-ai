@@ -11,7 +11,12 @@ from weiser.loader.models import MetricStore, S3UrlStyle
 class DuckDBMetricStore:
     def __init__(self, config: MetricStore) -> None:
         self.config = config
-        self.s3_client = boto3.client("s3")
+        self.s3_client = boto3.client(
+            "s3",
+            region_name=self.config.s3_region,
+            aws_access_key_id=self.config.s3_access_key,
+            aws_secret_access_key=self.config.s3_secret_access_key,
+        )
         self.db_name = config.db_name
         self.dialect = DuckDB
         if not self.db_name:

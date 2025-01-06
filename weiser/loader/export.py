@@ -1,9 +1,13 @@
+import json
+
+from datetime import datetime
 from rich.console import Console
 from rich.table import Table
 from weiser.drivers.metric_stores import MetricStoreDB
 from typing import Optional
-from slack_sdk import WebClient
+from slack_sdk.webhook import WebhookClient
 from slack_sdk.errors import SlackApiError
+
 
 console = Console()
 
@@ -11,54 +15,75 @@ console = Console()
 def export_results(
     run_id: str,
     metric_store: MetricStoreDB,
-    slack_channel: Optional[str] = None,
-    slack_token: Optional[str] = None
-):
+    slack_url: Optional[str] = None,
+    run_ts: Optional[datetime] = None,
+    verbose: bool = False,
+) -> bool:
     """Export results to storage and optionally to Slack.
     
     Args:
         run_id: The ID of the run to export
         metric_store: The metric store database
-        slack_channel: Optional Slack channel to post results to
-        slack_token: Optional Slack bot token
+        slack_url: Optional Slack webhook URL to post results to
+        run_ts: Optional datetime for the run
+        verbose: Optional bool to enable verbose output
+
+    Returns:
+        True if successful, False otherwise
     """
     # Export to storage
     results = metric_store.export_results(run_id)
     
      # Export to Slack if configured
-    if slack_channel and slack_token:
+    if slack_url:
         try:
-            client = WebClient(token=slack_token)
+            client = WebhookClient(url=slack_url)
             
             # Format the results message
             summary = results['summary']
-            message = [
-                f"*Results Summary for Run {run_id}*",
+            header = "\n".join([
+                f"*Results Summary for Run {run_ts.strftime('%Y-%m-%d %H:%M:%S')} - {run_id[:8]}*",
                 f"• Total Checks: {summary['total_checks']}",
                 f"• Passed: {summary['passed_checks']} ✅",
                 f"• Failed: {summary['failed_checks']} ❌\n"
-            ]
-            
+            ])
+            # Create blocks list with first section.
+            blocks = [
+                {
+                    "type": "section",
+                    "text": {
+                        "type": "mrkdwn",
+                        "text": header
+                    }
+                }
+            ]            
             # Add failure details if any
             if results['failures']:
-                message.append("*Failed Checks Details:*")
+                blocks.append({"type": "section", "text": {"type": "mrkdwn", "text": "*Failed Checks Details:*"}})
                 for i, failure in enumerate(results['failures'], 1):
-                    message.append(
-                        f"{i}. *{failure['name']}* ({failure['check_id']})\n"
-                        f"   • Dataset: {failure['dataset']}\n"
-                        f"   • Datasource: {failure['datasource']}\n"
-                        f"   • Condition: {failure['condition']}\n"
+                    block = (
+                        f"{i}. *{failure['name']}* ({failure['check_id'][:10]})\n"
+                        f"   • Dataset: {failure['dataset']}  at Data Source: {failure['datasource']}\n"
                         f"   • Actual Value: {failure['actual_value']}\n"
-                        f"   • Threshold: {failure['threshold']}\n"
                         f"   • Type: {failure['type']}\n"
                     )
+                    if failure['type'] != 'anomaly':
+                        block += (
+                            f"   • Condition: {failure['condition']}\n"
+                            f"   • Threshold: {failure['threshold']}\n"
+                        )
+                    blocks.append({"type": "section", "text": {"type": "mrkdwn", "text": block}})
             
             # Send message to Slack
-            response = client.chat_postMessage(
-                channel=slack_channel,
-                text="\n".join(message),
-                mrkdwn=True
+            response = client.send(
+                text=header,
+                blocks=blocks,
             )
+
+            if response.status_code != 200 or response.body != "ok":
+                console.print(f"Error posting to Slack: {response.body}")
+            elif verbose:
+                console.print("Results exported to Slack :white_check_mark:")
             
         except SlackApiError as e:
             console.print(f"Error posting to Slack: {e.response['error']}")

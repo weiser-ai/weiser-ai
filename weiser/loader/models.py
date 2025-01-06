@@ -138,5 +138,4 @@ class BaseConfig(BaseModel):
     datasources: List[Datasource]
     includes: Optional[List[str]] = None
     connections: Optional[List[MetricStore]] = [MetricStore()]
-    slack_channel: Optional[str] = None
-    slack_token: Optional[str] = None
+    slack_url: Optional[str] = None
