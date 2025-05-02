@@ -3,6 +3,8 @@ name: Deploy Docusaurus to GitHub Pages
 on:
   push:
     branches: [main]
+    paths:
+      - "docusaurus/**" # Only trigger when files in the docusaurus directory change
 
 permissions:
   contents: write # Allow the workflow to write to the repository contents
