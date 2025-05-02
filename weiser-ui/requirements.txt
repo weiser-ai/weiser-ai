@@ -1,6 +1,0 @@
-pandas==2.2.2
-python-dotenv==1.0.0
-psycopg2==2.9.9
-SQLAlchemy==2.0.32
-altair==5.4.1
-streamlit==1.38.0
