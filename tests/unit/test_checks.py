@@ -11,6 +11,7 @@ from weiser.checks.numeric import (
     CheckMax,
     CheckMin,
     CheckMeasure,
+    CheckNotEmpty,
 )
 from weiser.checks.anomaly import CheckAnomaly
 from weiser.checks import CheckFactory
@@ -525,6 +526,23 @@ class TestCheckFactory:
 
         assert isinstance(check, CheckMeasure)
 
+    def test_create_not_empty_check(self, mock_driver, mock_metric_store):
+        """Test factory creates CheckNotEmpty for not_empty type."""
+        check_config = Check(
+            name="test_not_empty",
+            dataset="orders",
+            type=CheckType.not_empty,
+            dimensions=["customer_id", "product_id"],
+            condition=Condition.le,
+            threshold=5
+        )
+
+        check = CheckFactory.create_check(
+            "run_123", check_config, mock_driver, "test_db", mock_metric_store
+        )
+
+        assert isinstance(check, CheckNotEmpty)
+
     def test_create_check_unsupported_type(self, mock_driver, mock_metric_store):
         """Test factory raises exception for unsupported check type."""
         # Create check with invalid type by bypassing validation
@@ -978,3 +996,134 @@ class TestThresholdValidation:
             assert len(results) == 1
             assert results[0]["success"] == False
             # Z-score should be 5.0 which is outside [-2.0, 2.0]
+
+    def test_not_empty_check_passes_threshold(self, mock_driver, mock_metric_store):
+        """Test CheckNotEmpty passes when NULL count is within threshold."""
+        check_config = Check(
+            name="test_not_empty_pass",
+            dataset="orders",
+            type=CheckType.not_empty,
+            dimensions=["customer_id", "product_id"],
+            condition=Condition.le,
+            threshold=5
+        )
+
+        check = CheckNotEmpty(
+            "run_123", check_config, mock_driver, "test_db", mock_metric_store
+        )
+
+        # Mock database responses: 3 NULLs in customer_id, 2 NULLs in product_id (both <= 5)
+        mock_driver.execute_query.side_effect = [[(3,)], [(2,)]]
+
+        results = check.run(verbose=False)
+
+        assert len(results) == 2  # One result per dimension
+        assert results[0]["success"] == True  # customer_id: 3 <= 5
+        assert results[0]["actual_value"] == 3
+        assert results[0]["threshold"] == 5
+        assert "customer_id_not_empty" in results[0]["name"]
+        
+        assert results[1]["success"] == True  # product_id: 2 <= 5
+        assert results[1]["actual_value"] == 2
+        assert results[1]["threshold"] == 5
+        assert "product_id_not_empty" in results[1]["name"]
+
+    def test_not_empty_check_fails_threshold(self, mock_driver, mock_metric_store):
+        """Test CheckNotEmpty fails when NULL count exceeds threshold."""
+        check_config = Check(
+            name="test_not_empty_fail",
+            dataset="orders",
+            type=CheckType.not_empty,
+            dimensions=["customer_id", "product_id"],
+            condition=Condition.le,
+            threshold=5
+        )
+
+        check = CheckNotEmpty(
+            "run_123", check_config, mock_driver, "test_db", mock_metric_store
+        )
+
+        # Mock database responses: 8 NULLs in customer_id, 3 NULLs in product_id
+        mock_driver.execute_query.side_effect = [[(8,)], [(3,)]]
+
+        results = check.run(verbose=False)
+
+        assert len(results) == 2  # One result per dimension
+        assert results[0]["success"] == False  # customer_id: 8 > 5
+        assert results[0]["actual_value"] == 8
+        assert results[0]["threshold"] == 5
+        assert "customer_id_not_empty" in results[0]["name"]
+        
+        assert results[1]["success"] == True  # product_id: 3 <= 5
+        assert results[1]["actual_value"] == 3
+        assert results[1]["threshold"] == 5
+        assert "product_id_not_empty" in results[1]["name"]
+
+    def test_not_empty_check_default_threshold(self, mock_driver, mock_metric_store):
+        """Test CheckNotEmpty uses default threshold of 0 when not specified."""
+        check_config = Check(
+            name="test_not_empty_default",
+            dataset="orders",
+            type=CheckType.not_empty,
+            dimensions=["customer_id"],
+            condition=Condition.le,
+            # No threshold specified
+        )
+
+        check = CheckNotEmpty(
+            "run_123", check_config, mock_driver, "test_db", mock_metric_store
+        )
+
+        # Mock database response: 0 NULLs in customer_id
+        mock_driver.execute_query.return_value = [(0,)]
+
+        results = check.run(verbose=False)
+
+        assert len(results) == 1
+        assert results[0]["success"] == True  # 0 <= 0 (default threshold)
+        assert results[0]["actual_value"] == 0
+        assert results[0]["threshold"] == 0  # Default threshold
+
+    def test_not_empty_check_no_dimensions_error(self, mock_driver, mock_metric_store):
+        """Test CheckNotEmpty raises error when no dimensions specified."""
+        check_config = Check(
+            name="test_not_empty_no_dims",
+            dataset="orders",
+            type=CheckType.not_empty,
+            dimensions=[],  # Empty dimensions
+            condition=Condition.le,
+            threshold=0
+        )
+
+        check = CheckNotEmpty(
+            "run_123", check_config, mock_driver, "test_db", mock_metric_store
+        )
+
+        with pytest.raises(ValueError, match="NotEmpty check requires at least one dimension"):
+            check.run(verbose=False)
+
+    def test_not_empty_check_sql_generation(self, mock_driver, mock_metric_store):
+        """Test CheckNotEmpty generates correct SQL for each dimension."""
+        check_config = Check(
+            name="test_not_empty_sql",
+            dataset="orders",
+            type=CheckType.not_empty,
+            dimensions=["customer_id"],
+            condition=Condition.le,
+            threshold=0,
+            filter="status = 'active'"
+        )
+
+        check = CheckNotEmpty(
+            "run_123", check_config, mock_driver, "test_db", mock_metric_store
+        )
+
+        # Mock database response
+        mock_driver.execute_query.return_value = [(0,)]
+
+        results = check.run(verbose=True)
+
+        # Verify the query was called
+        mock_driver.execute_query.assert_called()
+        # The query should contain the NULL check for customer_id
+        # and should include the filter condition

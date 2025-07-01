@@ -18,6 +18,7 @@ class CheckType(str, Enum):
     sum = "sum"
     min = "min"
     max = "max"
+    not_empty = "not_empty"
 
 
 class DBType(str, Enum):

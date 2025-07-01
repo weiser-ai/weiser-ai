@@ -167,3 +167,4 @@ minio_data/
 .vscode/
 .npmrc
 .DS_Store
+.claude

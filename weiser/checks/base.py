@@ -139,21 +139,28 @@ class BaseCheck:
             datasets = [datasets]
         for dataset in datasets:
             exp = self.parse_dataset(dataset)
-            q = self.get_query(exp, verbose)
-            rows = self.execute_query(q, verbose)
-            if self.check.dimensions or self.check.time_dimension:
-                for row in rows:
-                    success = self.apply_condition(row[-1])
-                    self.append_result(
-                        success, row, results, exp, datetime.now(), verbose
-                    )
-            else:
-                success = self.apply_condition(rows[0][0])
-                self.append_result(
-                    success, rows[0][0], results, exp, datetime.now(), verbose
-                )
-
+            self.process_dataset(exp, results, verbose)
         return results
+
+    def process_dataset(self, dataset_exp: Union[Table, str], results: List[Any], verbose: bool) -> None:
+        """Process a single dataset. Can be overridden by subclasses for custom logic."""
+        q = self.get_query(dataset_exp, verbose)
+        rows = self.execute_query(q, verbose)
+        self.process_query_results(rows, dataset_exp, results, verbose)
+
+    def process_query_results(self, rows: List[Any], dataset_exp: Union[Table, str], results: List[Any], verbose: bool) -> None:
+        """Process query results. Can be overridden by subclasses for custom result processing."""
+        if self.check.dimensions or self.check.time_dimension:
+            for row in rows:
+                success = self.apply_condition(row[-1])
+                self.append_result(
+                    success, row, results, dataset_exp, datetime.now(), verbose
+                )
+        else:
+            success = self.apply_condition(rows[0][0])
+            self.append_result(
+                success, rows[0][0], results, dataset_exp, datetime.now(), verbose
+            )
 
     def parse_dataset(self, dataset) -> Union[Table, str]:
         exp = parse_one(dataset)
@@ -173,6 +180,7 @@ class BaseCheck:
         limit: int = 1,
         dimensions: List[Any] = None,
         verbose: bool = False,
+        use_check_dimensions: bool = True,
     ) -> Select:
 
         dimensions = [] if dimensions is None else dimensions
@@ -185,7 +193,7 @@ class BaseCheck:
             ] + select_stmnt
             dimensions = dimensions + [time_dimension_sql]
 
-        if self.check.dimensions:
+        if use_check_dimensions and self.check.dimensions:
             select_stmnt = self.check.dimensions + select_stmnt
             dimensions = dimensions + self.check.dimensions
 
