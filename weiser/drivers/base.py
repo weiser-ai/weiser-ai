@@ -63,7 +63,7 @@ class BaseDriver:
         engine = self.engine
         with engine.connect() as conn:
             rows = list(conn.execute(text(q.sql(dialect=self.dialect))))
-            if not len(rows) > 0 and not len(rows[0]) > 0 and not rows[0][0] is None:
+            if not len(rows) > 0 or (len(rows) > 0 and (not len(rows[0]) > 0 or rows[0][0] is None)):
                 raise Exception(
                     f"Unexpected result executing check: {check.model_dump()}"
                 )

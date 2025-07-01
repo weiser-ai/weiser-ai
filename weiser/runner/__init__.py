@@ -78,7 +78,6 @@ def generate_sample_data(
                         run_id, check, driver, datasource, metric_store
                     )
                     datasets = check_instance.check.dataset
-                    results = []
                     if isinstance(datasets, str):
                         datasets = [datasets]
                     for dataset in datasets:
@@ -101,8 +100,10 @@ def generate_sample_data(
                                 check_instance.check.threshold + delta,
                             )
                         success = check_instance.apply_condition(value)
+                        # Create temporary list for this check instance
+                        temp_results = []
                         check_instance.append_result(
-                            success, value, results, dataset, dt, verbose
+                            success, value, temp_results, dataset, dt, verbose
                         )
 
                         results.append(

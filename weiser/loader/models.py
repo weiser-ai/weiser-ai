@@ -90,7 +90,7 @@ class Check(BaseModel):
     time_dimension: Optional[TimeDimension] = None
     filter: Optional[str] = None
     # Used for metadata checks
-    check_id: str = None
+    check_id: Optional[str] = None
 
     class Config:
         use_enum_values = True
