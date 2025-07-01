@@ -11,6 +11,7 @@ from weiser.checks.numeric import (
     CheckMin,
     CheckMax,
     CheckMeasure,
+    CheckNotEmpty,
 )
 from weiser.checks.anomaly import CheckAnomaly
 
@@ -23,6 +24,7 @@ CHECK_TYPE_MAP = {
     CheckType.sum: CheckSum,
     CheckType.max: CheckMax,
     CheckType.min: CheckMin,
+    CheckType.not_empty: CheckNotEmpty,
 }
 
 CHECK_TYPES = Union[BaseCheck, CheckNumeric, CheckRowCount, CheckAnomaly]

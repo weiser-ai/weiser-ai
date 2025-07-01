@@ -1,7 +1,7 @@
 
 [project]
 name = "weiser-ai"
-version = "0.1.10"
+version = "0.1.11"
 description = "Data Quality powered by AI"
 authors = [
     {name = "Paco Valdez", email = "paco.valdez@berkeley.edu"},

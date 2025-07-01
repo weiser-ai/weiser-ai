@@ -44,7 +44,6 @@ streamlit run app.py
 
 [![Watch the Dashboard Demo](https://cdn.loom.com/sessions/thumbnails/3154b4ce21ea4aaa917066991eaf1fb6-aca9c23da977e100-full-play.gif)](https://www.loom.com/share/3154b4ce21ea4aaa917066991eaf1fb6)
 
-
 ## Configuration
 
 Simple count check defintion
@@ -117,6 +116,19 @@ Custom SQL expression for dataset and filter usage
   filter: status = 'FULFILLED'
 ```
 
+Missing values check
+
+```yaml
+- name: customer data quality
+  dataset: orders
+  type: not_empty
+  dimensions: ["customer_id", "product_id", "order_date"]
+  condition: le
+  # Allow up to 5 NULL values per dimension
+  threshold: 5
+  filter: "status = 'active'"
+```
+
 Anomaly detection check
 
 ```yaml
@@ -133,7 +145,8 @@ Anomaly detection check
 
 ## Contributing
 
-We welcome contributions! 
+We welcome contributions!
 
 ## License
+
 This project is licensed under the Apache 2.0 License. See the `LICENSE` file for more details.
