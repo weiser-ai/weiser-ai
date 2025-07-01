@@ -1,36 +1,225 @@
 # Getting Started with Weiser
 
+Get up and running with Weiser data quality checks in minutes. This guide will walk you through installation, minimal configuration, and running your first data quality checks.
+
 ## Installation
 
-To install Weiser, use the following command:
+Install Weiser using pip:
 
-```sh
+```bash
 pip install weiser-ai
 ```
 
-## Usage
+## Prerequisites
 
-### Run example checks
+You'll need:
 
-Connections are defined at the datasources section in the config file see: `examples/example.yaml`.
+- **PostgreSQL database** with sample data
+- **Database credentials** (host, port, username, password, database name)
+- **Python 3.8+**
 
-Run checks in verbose mode:
+## Quick Start
 
-```sh
-weiser run examples/example.yaml -v
+### 1. Create Your First Configuration
+
+Create a file called `weiser-config.yaml`:
+
+```yaml
+version: 1
+
+# Database connection
+datasources:
+  - name: default
+    type: postgresql
+    host: localhost
+    port: 5432
+    db_name: your_database
+    user: your_username
+    password: your_password
+
+# Metric storage (uses local DuckDB file)
+connections:
+  - name: metricstore
+    type: metricstore
+    db_type: duckdb
+    db_name: weiser_metrics.db
+
+# Data quality checks
+checks:
+  # Basic row count check
+  - name: orders_exist
+    dataset: orders
+    type: row_count
+    condition: gt
+    threshold: 0
+    description: "Ensure orders table has data"
+
+  # Check for recent data
+  - name: recent_orders
+    dataset: orders
+    type: row_count
+    condition: gt
+    threshold: 10
+    filter: created_at >= CURRENT_DATE - INTERVAL '7 days'
+    description: "Ensure we have recent orders"
+
+  # Revenue validation
+  - name: positive_revenue
+    dataset: orders
+    type: sum
+    measure: order_amount
+    condition: gt
+    threshold: 0
+    filter: status = 'completed'
+    description: "Ensure completed orders have positive revenue"
+```
+
+### 2. Test Your Configuration
+
+First, validate your configuration without running checks:
+
+```bash
+weiser compile weiser-config.yaml -v
+```
+
+This will:
+
+- ✅ Validate your YAML syntax
+- ✅ Check database connectivity
+- ✅ Verify table access
+- ✅ Generate SQL queries for review
+
+### 3. Run Your First Checks
+
+Execute the data quality checks:
+
+```bash
+weiser run weiser-config.yaml -v
+```
+
+Expected output:
+
+```
+✅ orders_exist: 1,247 rows (> 0) - PASSED
+✅ recent_orders: 89 rows (> 10) - PASSED
+✅ positive_revenue: $45,231.50 (> 0) - PASSED
+
+All checks passed! 🎉
 ```
 
 [![Watch the CLI Demo](https://cdn.loom.com/sessions/thumbnails/ce75ad760c324733a36c637a9f8fe826-401f2819c5918c19-full-play.gif)](https://www.loom.com/share/ce75ad760c324733a36c637a9f8fe826)
 
-Compile checks only in verbose mode:
+## Environment Variables (Recommended)
 
-```sh
-weiser compile examples/example.yaml -v
+For security, use environment variables for sensitive data:
+
+```yaml
+# weiser-config.yaml
+datasources:
+  - name: default
+    type: postgresql
+    host: ${DB_HOST}
+    port: ${DB_PORT}
+    db_name: ${DB_NAME}
+    user: ${DB_USER}
+    password: ${DB_PASSWORD}
 ```
 
-### Run dashboard
+Set environment variables:
 
-```sh
+```bash
+export DB_HOST=localhost
+export DB_PORT=5432
+export DB_NAME=your_database
+export DB_USER=your_username
+export DB_PASSWORD=your_password
+```
+
+## Common Check Patterns
+
+### Data Freshness
+
+```yaml
+- name: daily_data_check
+  dataset: transactions
+  type: row_count
+  condition: gt
+  threshold: 100
+  time_dimension:
+    name: created_at
+    granularity: day
+```
+
+### Data Completeness
+
+```yaml
+- name: customer_data_complete
+  dataset: customers
+  type: not_empty_pct
+  dimensions: [email, phone]
+  condition: le
+  threshold: 0.05 # Max 5% NULL values
+```
+
+### Business Logic Validation
+
+```yaml
+- name: average_order_value
+  dataset: orders
+  type: numeric
+  measure: AVG(order_amount)
+  condition: ge
+  threshold: 25.0
+  filter: status = 'completed'
+```
+
+### Multi-Table Checks
+
+```yaml
+- name: critical_tables_exist
+  dataset: [orders, customers, products]
+  type: row_count
+  condition: gt
+  threshold: 0
+```
+
+## Next Steps
+
+### 📊 Add More Check Types
+
+Explore all available check types in our [Check Types Documentation](../check-types/index.md):
+
+- [Row Count](../check-types/row-count.md) - Basic data volume validation
+- [Numeric](../check-types/numeric.md) - Custom calculations and business logic
+- [Data Completeness](../check-types/not-empty.md) - NULL value monitoring
+- [Anomaly Detection](../check-types/anomaly.md) - Statistical outlier detection
+
+### ⚙️ Advanced Configuration
+
+Learn about advanced features in the [Configuration Guide](../configuration.md):
+
+- Multiple datasources
+- Complex filters and dimensions
+- Time-based aggregations
+- Slack notifications
+
+### 🔄 Automation
+
+Integrate Weiser into your data pipeline:
+
+```bash
+# Add to your CI/CD pipeline
+weiser run production-config.yaml
+
+# Schedule with cron
+0 8 * * * /usr/local/bin/weiser run /path/to/config.yaml
+```
+
+### 📈 Monitoring Dashboard
+
+Once you have checks running regularly, explore the visualization dashboard:
+
+```bash
 cd weiser-ui
 pip install -r requirements.txt
 streamlit run app.py
@@ -38,88 +227,42 @@ streamlit run app.py
 
 [![Watch the Dashboard Demo](https://cdn.loom.com/sessions/thumbnails/3154b4ce21ea4aaa917066991eaf1fb6-aca9c23da977e100-full-play.gif)](https://www.loom.com/share/3154b4ce21ea4aaa917066991eaf1fb6)
 
-## Configuration
+The dashboard provides:
 
-Simple count check defintion
+- **Historical Trends**: Track check results over time
+- **Failure Analysis**: Investigate failed checks
+- **Performance Metrics**: Monitor check execution times
+- **Data Quality Scores**: Overall system health view
 
-```yaml
-- name: test row_count
-  dataset: orders
-  type: row_count
-  condition: gt
-  threshold: 0
+## Troubleshooting
+
+### Connection Issues
+
+```bash
+# Test database connectivity
+psql -h localhost -U your_username -d your_database -c "SELECT 1;"
 ```
 
-Custom sql definition
+### Permission Issues
 
-```yaml
-- name: test numeric
-  dataset: orders
-  type: numeric
-  measure: sum(budgeted_amount::numeric::float)
-  condition: gt
-  threshold: 0
+Ensure your database user has `SELECT` permissions on target tables:
+
+```sql
+GRANT SELECT ON ALL TABLES IN SCHEMA public TO your_username;
 ```
 
-Target multiple datasets with the same check definition
+### Configuration Validation
 
-```yaml
-- name: test row_count
-  dataset: [orders, vendors]
-  type: row_count
-  condition: gt
-  threshold: 0
+Use the compile command to validate your setup:
+
+```bash
+weiser compile your-config.yaml --verbose
 ```
 
-Check individual group by values in a check
+## Getting Help
 
-```yaml
-- name: test row_count groupby
-  dataset: vendors
-  type: row_count
-  dimensions:
-    - tenant_id
-  condition: gt
-  threshold: 0
-```
+- 📚 [Check Types Documentation](../check-types/index.md)
+- ⚙️ [Configuration Reference](../configuration.md)
+- 💬 [GitHub Issues](https://github.com/weiser-ai/weiser/issues)
 
-Time aggregation check with granularity
-
-```yaml
-- name: test numeric gt sum yearly
-  dataset: orders
-  type: sum
-  measure: budgeted_amount::numeric::float
-  condition: gt
-  threshold: 0
-  time_dimension:
-    name: _updated_at
-    granularity: year
-```
-
-Custom SQL expression for dataset and filter usage
-
-```yaml
-- name: test numeric completed
-  dataset: >
-    SELECT * FROM orders o LEFT JOIN orders_status os ON o.order_id = os.order_id
-  type: numeric
-  measure: sum(budgeted_amount::numeric::float)
-  condition: gt
-  threshold: 0
-  filter: status = 'FULFILLED'
-```
-
-Anomaly detection check
-
-```yaml
-- name: test anomaly
-  # anomaly test should always target metrics metadata dataset
-  dataset: metrics
-  type: anomaly
-  # References Orders row count.
-  check_id: c5cee10898e30edd1c0dde3f24966b4c47890fcf247e5b630c2c156f7ac7ba22
-  condition: between
-  # long tails of normal distribution for Z-score.
-  threshold: [-3.5, 3.5]
-```
+Ready to ensure your data quality? Start building more comprehensive checks with our detailed [Check Types Documentation](../check-types/index.md)!
