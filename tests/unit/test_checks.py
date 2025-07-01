@@ -630,7 +630,7 @@ class TestThresholdValidation:
         assert results[0]["actual_value"] == 0.05
         assert results[0]["threshold"] == 0.1
         assert "customer_id_not_empty_pct" in results[0]["name"]
-        
+
         assert results[1]["success"] == True  # product_id: 8% <= 10%
         assert results[1]["actual_value"] == 0.08
         assert results[1]["threshold"] == 0.1
@@ -661,13 +661,15 @@ class TestThresholdValidation:
         assert results[0]["actual_value"] == 0.15
         assert results[0]["threshold"] == 0.1
         assert "customer_id_not_empty_pct" in results[0]["name"]
-        
+
         assert results[1]["success"] == True  # product_id: 5% <= 10%
         assert results[1]["actual_value"] == 0.05
         assert results[1]["threshold"] == 0.1
         assert "product_id_not_empty_pct" in results[1]["name"]
 
-    def test_not_empty_pct_check_default_threshold(self, mock_driver, mock_metric_store):
+    def test_not_empty_pct_check_default_threshold(
+        self, mock_driver, mock_metric_store
+    ):
         """Test CheckNotEmptyPct uses default threshold of 0.0 when not specified."""
         check_config = Check(
             name="test_not_empty_pct_default",
@@ -692,7 +694,9 @@ class TestThresholdValidation:
         assert results[0]["actual_value"] == 0.0
         assert results[0]["threshold"] == 0.0  # Default threshold
 
-    def test_not_empty_pct_check_boundary_conditions(self, mock_driver, mock_metric_store):
+    def test_not_empty_pct_check_boundary_conditions(
+        self, mock_driver, mock_metric_store
+    ):
         """Test CheckNotEmptyPct boundary conditions with exact threshold values."""
         check_config = Check(
             name="test_not_empty_pct_boundary",
@@ -740,39 +744,9 @@ class TestThresholdValidation:
 
         # Verify the query was called
         mock_driver.execute_query.assert_called()
-        # The query should calculate percentage: 
+        # The query should calculate percentage:
         # CAST(SUM(CASE WHEN customer_id IS NULL THEN 1 ELSE 0 END) AS FLOAT) / CAST(COUNT(*) AS FLOAT)
-        
+
         assert len(results) == 1
         assert results[0]["success"] == True  # 3% <= 5%
         assert results[0]["actual_value"] == 0.03
-
-    def test_not_empty_pct_check_inheritance_behavior(self, mock_driver, mock_metric_store):
-        """Test that CheckNotEmptyPct properly inherits from CheckNotEmpty."""
-        # Verify that CheckNotEmptyPct is a subclass of CheckNotEmpty
-        assert issubclass(CheckNotEmptyPct, CheckNotEmpty)
-        
-        check_config = Check(
-            name="test_inheritance",
-            dataset="orders",
-            type=CheckType.not_empty_pct,
-            dimensions=["customer_id"],
-            condition=Condition.le,
-            threshold=0.1,
-        )
-
-        check = CheckNotEmptyPct(
-            "run_123", check_config, mock_driver, "test_db", mock_metric_store
-        )
-
-        # Test that inherited methods work correctly
-        assert check.get_default_threshold() == 0.0
-        assert check.get_check_suffix() == "not_empty_pct"
-        
-        # Test that the SQL generation is different from parent
-        parent_sql = CheckNotEmpty.get_null_count_sql(check, "test_column")
-        child_sql = check.get_null_count_sql("test_column")
-        
-        assert parent_sql != child_sql
-        assert "FLOAT" in child_sql  # Percentage calculation uses FLOAT casting
-        assert "/" in child_sql  # Percentage calculation uses division

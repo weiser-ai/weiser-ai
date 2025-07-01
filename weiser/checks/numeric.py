@@ -141,9 +141,6 @@ class CheckNotEmpty(BaseCheck):
 
 
 class CheckNotEmptyPct(CheckNotEmpty):
-    def get_default_threshold(self):
-        """Return the default threshold for percentage check (0.0 = 0%)."""
-        return 0.0
 
     def get_check_suffix(self):
         """Return the suffix to append to check names."""
