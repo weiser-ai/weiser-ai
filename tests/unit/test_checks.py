@@ -535,3 +535,446 @@ class TestCheckFactory:
             CheckFactory.create_check(
                 "run_123", check_config, mock_driver, "test_db", mock_metric_store
             )
+
+
+class TestThresholdValidation:
+    """Test that each check type properly validates data against thresholds."""
+
+    def test_row_count_check_passes_threshold(self, mock_driver, mock_metric_store):
+        """Test CheckRowCount passes when actual value exceeds threshold."""
+        check_config = Check(
+            name="test_row_count_pass",
+            dataset="orders",
+            type=CheckType.row_count,
+            condition=Condition.gt,
+            threshold=100
+        )
+
+        check = CheckRowCount(
+            "run_123", check_config, mock_driver, "test_db", mock_metric_store
+        )
+
+        # Mock database response: 150 rows (should pass > 100)
+        mock_driver.execute_query.return_value = [(150,)]
+
+        results = check.run(verbose=False)
+
+        assert len(results) == 1
+        assert results[0]["success"] == True
+        assert results[0]["actual_value"] == 150
+        assert results[0]["threshold"] == 100
+
+    def test_row_count_check_fails_threshold(self, mock_driver, mock_metric_store):
+        """Test CheckRowCount fails when actual value is below threshold."""
+        check_config = Check(
+            name="test_row_count_fail",
+            dataset="orders",
+            type=CheckType.row_count,
+            condition=Condition.gt,
+            threshold=100
+        )
+
+        check = CheckRowCount(
+            "run_123", check_config, mock_driver, "test_db", mock_metric_store
+        )
+
+        # Mock database response: 50 rows (should fail <= 100)
+        mock_driver.execute_query.return_value = [(50,)]
+
+        results = check.run(verbose=False)
+
+        assert len(results) == 1
+        assert results[0]["success"] == False
+        assert results[0]["actual_value"] == 50
+        assert results[0]["threshold"] == 100
+
+    def test_numeric_check_passes_threshold(self, mock_driver, mock_metric_store):
+        """Test CheckNumeric passes when actual value exceeds threshold."""
+        check_config = Check(
+            name="test_numeric_pass",
+            dataset="orders",
+            type=CheckType.numeric,
+            measure="avg(amount)",
+            condition=Condition.gt,
+            threshold=500.0
+        )
+
+        check = CheckNumeric(
+            "run_123", check_config, mock_driver, "test_db", mock_metric_store
+        )
+
+        # Mock database response: 750.5 (should pass > 500.0)
+        mock_driver.execute_query.return_value = [(750.5,)]
+
+        results = check.run(verbose=False)
+
+        assert len(results) == 1
+        assert results[0]["success"] == True
+        assert results[0]["actual_value"] == 750.5
+        assert results[0]["threshold"] == 500.0
+
+    def test_numeric_check_fails_threshold(self, mock_driver, mock_metric_store):
+        """Test CheckNumeric fails when actual value is below threshold."""
+        check_config = Check(
+            name="test_numeric_fail",
+            dataset="orders",
+            type=CheckType.numeric,
+            measure="avg(amount)",
+            condition=Condition.gt,
+            threshold=500.0
+        )
+
+        check = CheckNumeric(
+            "run_123", check_config, mock_driver, "test_db", mock_metric_store
+        )
+
+        # Mock database response: 300.2 (should fail <= 500.0)
+        mock_driver.execute_query.return_value = [(300.2,)]
+
+        results = check.run(verbose=False)
+
+        assert len(results) == 1
+        assert results[0]["success"] == False
+        assert results[0]["actual_value"] == 300.2
+        assert results[0]["threshold"] == 500.0
+
+    def test_sum_check_passes_threshold(self, mock_driver, mock_metric_store):
+        """Test CheckSum passes when actual value exceeds threshold."""
+        check_config = Check(
+            name="test_sum_pass",
+            dataset="orders",
+            type=CheckType.sum,
+            measure="amount",
+            condition=Condition.ge,
+            threshold=10000.0
+        )
+
+        check = CheckSum(
+            "run_123", check_config, mock_driver, "test_db", mock_metric_store
+        )
+
+        # Mock database response: 15000.0 (should pass >= 10000.0)
+        mock_driver.execute_query.return_value = [(15000.0,)]
+
+        results = check.run(verbose=False)
+
+        assert len(results) == 1
+        assert results[0]["success"] == True
+        assert results[0]["actual_value"] == 15000.0
+        assert results[0]["threshold"] == 10000.0
+
+    def test_sum_check_fails_threshold(self, mock_driver, mock_metric_store):
+        """Test CheckSum fails when actual value is below threshold."""
+        check_config = Check(
+            name="test_sum_fail",
+            dataset="orders",
+            type=CheckType.sum,
+            measure="amount",
+            condition=Condition.ge,
+            threshold=10000.0
+        )
+
+        check = CheckSum(
+            "run_123", check_config, mock_driver, "test_db", mock_metric_store
+        )
+
+        # Mock database response: 8500.0 (should fail < 10000.0)
+        mock_driver.execute_query.return_value = [(8500.0,)]
+
+        results = check.run(verbose=False)
+
+        assert len(results) == 1
+        assert results[0]["success"] == False
+        assert results[0]["actual_value"] == 8500.0
+        assert results[0]["threshold"] == 10000.0
+
+    def test_max_check_passes_threshold(self, mock_driver, mock_metric_store):
+        """Test CheckMax passes when actual value is within threshold."""
+        check_config = Check(
+            name="test_max_pass",
+            dataset="orders",
+            type=CheckType.max,
+            measure="amount",
+            condition=Condition.le,
+            threshold=1000.0
+        )
+
+        check = CheckMax(
+            "run_123", check_config, mock_driver, "test_db", mock_metric_store
+        )
+
+        # Mock database response: 950.0 (should pass <= 1000.0)
+        mock_driver.execute_query.return_value = [(950.0,)]
+
+        results = check.run(verbose=False)
+
+        assert len(results) == 1
+        assert results[0]["success"] == True
+        assert results[0]["actual_value"] == 950.0
+        assert results[0]["threshold"] == 1000.0
+
+    def test_max_check_fails_threshold(self, mock_driver, mock_metric_store):
+        """Test CheckMax fails when actual value exceeds threshold."""
+        check_config = Check(
+            name="test_max_fail",
+            dataset="orders",
+            type=CheckType.max,
+            measure="amount",
+            condition=Condition.le,
+            threshold=1000.0
+        )
+
+        check = CheckMax(
+            "run_123", check_config, mock_driver, "test_db", mock_metric_store
+        )
+
+        # Mock database response: 1500.0 (should fail > 1000.0)
+        mock_driver.execute_query.return_value = [(1500.0,)]
+
+        results = check.run(verbose=False)
+
+        assert len(results) == 1
+        assert results[0]["success"] == False
+        assert results[0]["actual_value"] == 1500.0
+        assert results[0]["threshold"] == 1000.0
+
+    def test_min_check_passes_threshold(self, mock_driver, mock_metric_store):
+        """Test CheckMin passes when actual value exceeds threshold."""
+        check_config = Check(
+            name="test_min_pass",
+            dataset="orders",
+            type=CheckType.min,
+            measure="amount",
+            condition=Condition.ge,
+            threshold=10.0
+        )
+
+        check = CheckMin(
+            "run_123", check_config, mock_driver, "test_db", mock_metric_store
+        )
+
+        # Mock database response: 25.0 (should pass >= 10.0)
+        mock_driver.execute_query.return_value = [(25.0,)]
+
+        results = check.run(verbose=False)
+
+        assert len(results) == 1
+        assert results[0]["success"] == True
+        assert results[0]["actual_value"] == 25.0
+        assert results[0]["threshold"] == 10.0
+
+    def test_min_check_fails_threshold(self, mock_driver, mock_metric_store):
+        """Test CheckMin fails when actual value is below threshold."""
+        check_config = Check(
+            name="test_min_fail",
+            dataset="orders",
+            type=CheckType.min,
+            measure="amount",
+            condition=Condition.ge,
+            threshold=10.0
+        )
+
+        check = CheckMin(
+            "run_123", check_config, mock_driver, "test_db", mock_metric_store
+        )
+
+        # Mock database response: 5.0 (should fail < 10.0)
+        mock_driver.execute_query.return_value = [(5.0,)]
+
+        results = check.run(verbose=False)
+
+        assert len(results) == 1
+        assert results[0]["success"] == False
+        assert results[0]["actual_value"] == 5.0
+        assert results[0]["threshold"] == 10.0
+
+    def test_measure_check_passes_threshold(self, mock_driver, mock_metric_store):
+        """Test CheckMeasure passes when actual value exceeds threshold."""
+        check_config = Check(
+            name="test_measure_pass",
+            dataset="orders",
+            type=CheckType.measure,
+            measure="total_revenue",
+            condition=Condition.gt,
+            threshold=50000.0
+        )
+
+        check = CheckMeasure(
+            "run_123", check_config, mock_driver, "test_db", mock_metric_store
+        )
+
+        # Mock database response: 75000.0 (should pass > 50000.0)
+        mock_driver.execute_query.return_value = [(75000.0,)]
+
+        results = check.run(verbose=False)
+
+        assert len(results) == 1
+        assert results[0]["success"] == True
+        assert results[0]["actual_value"] == 75000.0
+        assert results[0]["threshold"] == 50000.0
+
+    def test_measure_check_fails_threshold(self, mock_driver, mock_metric_store):
+        """Test CheckMeasure fails when actual value is below threshold."""
+        check_config = Check(
+            name="test_measure_fail",
+            dataset="orders",
+            type=CheckType.measure,
+            measure="total_revenue",
+            condition=Condition.gt,
+            threshold=50000.0
+        )
+
+        check = CheckMeasure(
+            "run_123", check_config, mock_driver, "test_db", mock_metric_store
+        )
+
+        # Mock database response: 35000.0 (should fail <= 50000.0)
+        mock_driver.execute_query.return_value = [(35000.0,)]
+
+        results = check.run(verbose=False)
+
+        assert len(results) == 1
+        assert results[0]["success"] == False
+        assert results[0]["actual_value"] == 35000.0
+        assert results[0]["threshold"] == 50000.0
+
+    def test_between_condition_passes_threshold(self, mock_driver, mock_metric_store):
+        """Test between condition passes when value is within range."""
+        check_config = Check(
+            name="test_between_pass",
+            dataset="orders",
+            type=CheckType.numeric,
+            measure="z_score",
+            condition=Condition.between,
+            threshold=[-2.0, 2.0]
+        )
+
+        check = CheckNumeric(
+            "run_123", check_config, mock_driver, "test_db", mock_metric_store
+        )
+
+        # Mock database response: 1.5 (should pass within [-2.0, 2.0])
+        mock_driver.execute_query.return_value = [(1.5,)]
+
+        results = check.run(verbose=False)
+
+        assert len(results) == 1
+        assert results[0]["success"] == True
+        assert results[0]["actual_value"] == 1.5
+        assert results[0]["threshold"] == [-2.0, 2.0]
+
+    def test_between_condition_fails_threshold_high(self, mock_driver, mock_metric_store):
+        """Test between condition fails when value is above upper bound."""
+        check_config = Check(
+            name="test_between_fail_high",
+            dataset="orders",
+            type=CheckType.numeric,
+            measure="z_score",
+            condition=Condition.between,
+            threshold=[-2.0, 2.0]
+        )
+
+        check = CheckNumeric(
+            "run_123", check_config, mock_driver, "test_db", mock_metric_store
+        )
+
+        # Mock database response: 3.5 (should fail > 2.0)
+        mock_driver.execute_query.return_value = [(3.5,)]
+
+        results = check.run(verbose=False)
+
+        assert len(results) == 1
+        assert results[0]["success"] == False
+        assert results[0]["actual_value"] == 3.5
+        assert results[0]["threshold"] == [-2.0, 2.0]
+
+    def test_between_condition_fails_threshold_low(self, mock_driver, mock_metric_store):
+        """Test between condition fails when value is below lower bound."""
+        check_config = Check(
+            name="test_between_fail_low",
+            dataset="orders",
+            type=CheckType.numeric,
+            measure="z_score",
+            condition=Condition.between,
+            threshold=[-2.0, 2.0]
+        )
+
+        check = CheckNumeric(
+            "run_123", check_config, mock_driver, "test_db", mock_metric_store
+        )
+
+        # Mock database response: -3.0 (should fail < -2.0)
+        mock_driver.execute_query.return_value = [(-3.0,)]
+
+        results = check.run(verbose=False)
+
+        assert len(results) == 1
+        assert results[0]["success"] == False
+        assert results[0]["actual_value"] == -3.0
+        assert results[0]["threshold"] == [-2.0, 2.0]
+
+    def test_anomaly_check_passes_threshold(self, mock_driver, mock_metric_store):
+        """Test CheckAnomaly passes when z-score is within bounds."""
+        check_config = Check(
+            name="test_anomaly_pass",
+            dataset="metrics",
+            type=CheckType.anomaly,
+            check_id="anomaly_123",
+            condition=Condition.between,
+            threshold=[-2.0, 2.0]
+        )
+
+        # Mock sufficient historical data
+        mock_metric_store.execute_query.return_value = [
+            (100.0, "2023-01-01"), (105.0, "2023-01-02"), (98.0, "2023-01-03"),
+            (102.0, "2023-01-04"), (101.0, "2023-01-05"), (99.0, "2023-01-06")
+        ]
+
+        with patch('duckdb.connect') as mock_duckdb:
+            mock_conn = Mock()
+            mock_duckdb.return_value.__enter__.return_value = mock_conn
+            # Mock MAD calculation: median=100, mad=2, last_value=101 -> z_score=0.5
+            mock_conn.execute.return_value.fetchall.return_value = [(2.0, 100.0, 101.0)]
+
+            check = CheckAnomaly(
+                "run_123", check_config, mock_driver, "test_db", mock_metric_store
+            )
+
+            results = check.run(verbose=False)
+
+            assert len(results) == 1
+            assert results[0]["success"] == True
+            # Z-score should be 0.5 which is within [-2.0, 2.0]
+
+    def test_anomaly_check_fails_threshold(self, mock_driver, mock_metric_store):
+        """Test CheckAnomaly fails when z-score is outside bounds."""
+        check_config = Check(
+            name="test_anomaly_fail",
+            dataset="metrics",
+            type=CheckType.anomaly,
+            check_id="anomaly_456",
+            condition=Condition.between,
+            threshold=[-2.0, 2.0]
+        )
+
+        # Mock sufficient historical data
+        mock_metric_store.execute_query.return_value = [
+            (100.0, "2023-01-01"), (105.0, "2023-01-02"), (98.0, "2023-01-03"),
+            (102.0, "2023-01-04"), (101.0, "2023-01-05"), (99.0, "2023-01-06")
+        ]
+
+        with patch('duckdb.connect') as mock_duckdb:
+            mock_conn = Mock()
+            mock_duckdb.return_value.__enter__.return_value = mock_conn
+            # Mock MAD calculation: median=100, mad=2, last_value=110 -> z_score=5.0
+            mock_conn.execute.return_value.fetchall.return_value = [(2.0, 100.0, 110.0)]
+
+            check = CheckAnomaly(
+                "run_123", check_config, mock_driver, "test_db", mock_metric_store
+            )
+
+            results = check.run(verbose=False)
+
+            assert len(results) == 1
+            assert results[0]["success"] == False
+            # Z-score should be 5.0 which is outside [-2.0, 2.0]
