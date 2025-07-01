@@ -11,6 +11,7 @@ from weiser.checks.numeric import (
     CheckMin,
     CheckMeasure,
     CheckNotEmpty,
+    CheckNotEmptyPct,
 )
 from weiser.checks.anomaly import CheckAnomaly
 from weiser.checks import CheckFactory
@@ -540,6 +541,23 @@ class TestCheckFactory:
         )
 
         assert isinstance(check, CheckNotEmpty)
+
+    def test_create_not_empty_pct_check(self, mock_driver, mock_metric_store):
+        """Test factory creates CheckNotEmptyPct for not_empty_pct type."""
+        check_config = Check(
+            name="test_not_empty_pct",
+            dataset="orders",
+            type=CheckType.not_empty_pct,
+            dimensions=["customer_id", "product_id"],
+            condition=Condition.le,
+            threshold=0.1,  # 10% threshold
+        )
+
+        check = CheckFactory.create_check(
+            "run_123", check_config, mock_driver, "test_db", mock_metric_store
+        )
+
+        assert isinstance(check, CheckNotEmptyPct)
 
     def test_create_check_unsupported_type(self, mock_driver, mock_metric_store):
         """Test factory raises exception for unsupported check type."""

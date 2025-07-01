@@ -74,51 +74,81 @@ class CheckNotEmpty(BaseCheck):
     def get_query(self, table: str, verbose: bool) -> Select:
         # This won't be used since we override process_dataset
         raise NotImplementedError("CheckNotEmpty uses custom process_dataset method")
-    
+
+    def get_check_suffix(self):
+        """Return the suffix to append to check names."""
+        return "not_empty"
+
+    def get_null_count_sql(self, dimension: str) -> str:
+        """Return the SQL expression to count NULL values for a dimension."""
+        return f"SUM(CASE WHEN {dimension} IS NULL THEN 1 ELSE 0 END)"
+
+    def get_total_count_sql(self, dimension: str) -> str:
+        """Return the SQL expression to count total values for a dimension (used by percentage checks)."""
+        return "COUNT(*)"
+
     def process_dataset(self, dataset_exp, results, verbose: bool) -> None:
         """Custom dataset processing for NotEmpty check."""
         from datetime import datetime
-        
+
         if not self.check.dimensions:
-            raise ValueError("NotEmpty check requires at least one dimension to check for NULL values")
-        
-        # Set default threshold to 0 if not specified
-        if self.check.threshold is None:
-            self.check.threshold = 0
-            
+            raise ValueError(
+                "NotEmpty check requires at least one dimension to check for NULL values"
+            )
+
         # Create separate query for each dimension
         for dimension in self.check.dimensions:
             # Build query to count NULL values in this specific dimension
             # Use build_query but disable check dimensions to avoid GROUP BY conflicts
             q = self.build_query(
-                [f"SUM(CASE WHEN {dimension} IS NULL THEN 1 ELSE 0 END)"],
+                [self.get_null_count_sql(dimension)],
                 dataset_exp,
                 limit=1,
                 use_check_dimensions=False,  # Don't add dimensions to GROUP BY
-                verbose=verbose
+                verbose=verbose,
             )
-            
+
             if verbose:
-                print(f"NotEmpty check query for dimension '{dimension}': {q.sql()}")
-            
+                print(
+                    f"{self.__class__.__name__} check query for dimension '{dimension}': {q.sql()}"
+                )
+
             rows = self.execute_query(q, verbose)
-            null_count = rows[0][0] if rows and rows[0] and rows[0][0] is not None else 0
-            
-            # Apply condition (null_count should be <= threshold for success)
-            success = self.apply_condition(null_count)
-            
+            actual_value = (
+                rows[0][0] if rows and rows[0] and rows[0][0] is not None else 0
+            )
+
+            # Apply condition
+            success = self.apply_condition(actual_value)
+
             # Create a modified result name to include the dimension being checked
             original_name = self.check.name
             original_dimensions = self.check.dimensions
-            
+
             # Temporarily modify check to have single dimension for proper result naming
-            self.check.name = f"{original_name}_{dimension}_not_empty"
-            self.check.dimensions = []  # Clear dimensions to avoid tuple processing in append_result
-            
+            self.check.name = f"{original_name}_{dimension}_{self.get_check_suffix()}"
+            self.check.dimensions = (
+                []
+            )  # Clear dimensions to avoid tuple processing in append_result
+
             self.append_result(
-                success, null_count, results, dataset_exp, datetime.now(), verbose
+                success, actual_value, results, dataset_exp, datetime.now(), verbose
             )
-            
+
             # Restore original values for next iteration
             self.check.name = original_name
             self.check.dimensions = original_dimensions
+
+
+class CheckNotEmptyPct(CheckNotEmpty):
+    def get_default_threshold(self):
+        """Return the default threshold for percentage check (0.0 = 0%)."""
+        return 0.0
+
+    def get_check_suffix(self):
+        """Return the suffix to append to check names."""
+        return "not_empty_pct"
+
+    def get_null_count_sql(self, dimension: str) -> str:
+        """Return SQL to calculate NULL percentage for a dimension."""
+        return f"CAST(SUM(CASE WHEN {dimension} IS NULL THEN 1 ELSE 0 END) AS FLOAT) / CAST(COUNT(*) AS FLOAT)"

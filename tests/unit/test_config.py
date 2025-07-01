@@ -5,7 +5,14 @@ import os
 from unittest.mock import patch, mock_open
 
 from weiser.loader.config import load_config, update_namespace
-from weiser.loader.models import BaseConfig, Check, Datasource, CheckType, Condition, DBType
+from weiser.loader.models import (
+    BaseConfig,
+    Check,
+    Datasource,
+    CheckType,
+    Condition,
+    DBType,
+)
 
 # Import fixtures
 from tests.fixtures.config_fixtures import *
@@ -16,24 +23,31 @@ class TestConfigLoading:
 
     def test_load_simple_config(self, temp_yaml_file, sample_yaml_config):
         """Test loading a simple YAML configuration."""
-        with open(temp_yaml_file, 'w') as f:
+        with open(temp_yaml_file, "w") as f:
             f.write(sample_yaml_config)
-        
+
         config = load_config(temp_yaml_file, verbose=False)
-        
+
         assert config is not None
         assert "checks" in config
         assert "datasources" in config
         assert len(config["checks"]) == 2
         assert len(config["datasources"]) == 1
 
-    def test_load_config_with_templating(self, temp_yaml_file, sample_yaml_config_with_templating, sample_environment_variables):
+    def test_load_config_with_templating(
+        self,
+        temp_yaml_file,
+        sample_yaml_config_with_templating,
+        sample_environment_variables,
+    ):
         """Test loading configuration with Jinja2 templating."""
-        with open(temp_yaml_file, 'w') as f:
+        with open(temp_yaml_file, "w") as f:
             f.write(sample_yaml_config_with_templating)
-        
-        config = load_config(temp_yaml_file, context=sample_environment_variables, verbose=False)
-        
+
+        config = load_config(
+            temp_yaml_file, context=sample_environment_variables, verbose=False
+        )
+
         assert config is not None
         assert config["datasources"][0]["host"] == "localhost"
         assert config["datasources"][0]["port"] == 5432  # YAML converts to int
@@ -52,7 +66,7 @@ datasources:
     host: localhost
 checks: []
 """
-        
+
         # Create included config file
         included_config = """
 checks:
@@ -62,19 +76,21 @@ checks:
     condition: gt
     threshold: 0
 """
-        
+
         # Write main config
-        with open(temp_yaml_file, 'w') as f:
+        with open(temp_yaml_file, "w") as f:
             f.write(main_config)
-        
+
         # Write included config in same directory
-        included_path = os.path.join(os.path.dirname(temp_yaml_file), 'included_config.yaml')
-        with open(included_path, 'w') as f:
+        included_path = os.path.join(
+            os.path.dirname(temp_yaml_file), "included_config.yaml"
+        )
+        with open(included_path, "w") as f:
             f.write(included_config)
-        
+
         try:
             config = load_config(temp_yaml_file, verbose=False)
-            
+
             assert config is not None
             assert len(config["checks"]) == 1
             assert config["checks"][0]["name"] == "included_check"
@@ -84,33 +100,24 @@ checks:
 
     def test_update_namespace_merge_checks(self):
         """Test namespace updating merges checks correctly."""
-        namespace = {
-            "checks": [{"name": "check1"}],
-            "datasources": [{"name": "db1"}]
-        }
-        
-        new_file = {
-            "checks": [{"name": "check2"}],
-            "datasources": [{"name": "db2"}]
-        }
-        
+        namespace = {"checks": [{"name": "check1"}], "datasources": [{"name": "db1"}]}
+
+        new_file = {"checks": [{"name": "check2"}], "datasources": [{"name": "db2"}]}
+
         result = update_namespace(namespace, new_file, verbose=False)
-        
+
         assert len(result["checks"]) == 2
         assert len(result["datasources"]) == 2
-        assert result["checks"][0]["name"] == "check1" 
+        assert result["checks"][0]["name"] == "check1"
         assert result["checks"][1]["name"] == "check2"
 
     def test_update_namespace_empty_namespace(self):
         """Test namespace updating with empty initial namespace."""
         namespace = None
-        new_file = {
-            "checks": [{"name": "check1"}],
-            "datasources": [{"name": "db1"}]
-        }
-        
+        new_file = {"checks": [{"name": "check1"}], "datasources": [{"name": "db1"}]}
+
         result = update_namespace(namespace, new_file, verbose=False)
-        
+
         assert result == new_file
 
     def test_load_config_file_not_found(self):
@@ -126,10 +133,10 @@ checks:
         invalid: yaml: content:
           - missing: bracket
         """
-        
-        with open(temp_yaml_file, 'w') as f:
+
+        with open(temp_yaml_file, "w") as f:
             f.write(invalid_yaml)
-        
+
         with pytest.raises(yaml.YAMLError):
             load_config(temp_yaml_file, verbose=False)
 
@@ -149,41 +156,43 @@ class TestBaseConfigValidation:
         config = BaseConfig(
             checks=[],  # Empty checks is allowed
             datasources=[sample_datasource],
-            connections=[sample_metric_store]
+            connections=[sample_metric_store],
         )
         assert len(config.checks) == 0
 
-    def test_config_with_missing_datasources(self, sample_row_count_check, sample_metric_store):
+    def test_config_with_missing_datasources(
+        self, sample_row_count_check, sample_metric_store
+    ):
         """Test BaseConfig allows empty datasources list."""
         # The actual implementation allows empty datasources
         config = BaseConfig(
             checks=[sample_row_count_check],
             datasources=[],  # Empty datasources is allowed
-            connections=[sample_metric_store]
+            connections=[sample_metric_store],
         )
         assert len(config.datasources) == 0
 
     def test_check_validation_missing_threshold(self):
         """Test Check validation allows missing threshold."""
-        # The actual implementation allows missing threshold (defaults to None)
+        # The actual implementation allows missing threshold (defaults to 0)
         check = Check(
             name="check_without_threshold",
             dataset="orders",
             type=CheckType.row_count,
-            condition=Condition.gt
+            condition=Condition.gt,
             # Missing threshold is allowed
         )
-        assert check.threshold is None
+        assert check.threshold is 0
 
     def test_check_validation_invalid_condition(self):
         """Test Check validation with invalid condition."""
         with pytest.raises(ValueError):
             Check(
                 name="invalid_check",
-                dataset="orders", 
+                dataset="orders",
                 type=CheckType.row_count,
                 condition="invalid_condition",  # Should use Condition enum
-                threshold=0
+                threshold=0,
             )
 
     def test_datasource_validation_missing_required_fields(self):
@@ -191,7 +200,7 @@ class TestBaseConfigValidation:
         # The actual implementation allows minimal datasource configuration
         datasource = Datasource(
             name="minimal_db",
-            type=DBType.postgresql
+            type=DBType.postgresql,
             # Missing optional fields is allowed
         )
         assert datasource.name == "minimal_db"
@@ -205,9 +214,9 @@ class TestBaseConfigValidation:
             type=CheckType.numeric,
             measure="sum(amount)",
             condition=Condition.between,
-            threshold=[100.0, 200.0]
+            threshold=[100.0, 200.0],
         )
-        
+
         assert check.condition == Condition.between
         assert check.threshold == [100.0, 200.0]
 
@@ -219,8 +228,8 @@ class TestBaseConfigValidation:
             type=CheckType.row_count,
             dimensions=["status", "region"],
             condition=Condition.gt,
-            threshold=0
+            threshold=0,
         )
-        
+
         assert check.dimensions == ["status", "region"]
         assert len(check.dimensions) == 2

@@ -9,6 +9,7 @@ from weiser.checks.numeric import (
     CheckMin,
     CheckMeasure,
     CheckNotEmpty,
+    CheckNotEmptyPct,
 )
 from weiser.checks.anomaly import CheckAnomaly
 from weiser.loader.models import Check, CheckType, Condition
@@ -603,3 +604,175 @@ class TestThresholdValidation:
         mock_driver.execute_query.assert_called()
         # The query should contain the NULL check for customer_id
         # and should include the filter condition
+
+    def test_not_empty_pct_check_passes_threshold(self, mock_driver, mock_metric_store):
+        """Test CheckNotEmptyPct passes when NULL percentage is within threshold."""
+        check_config = Check(
+            name="test_not_empty_pct_pass",
+            dataset="orders",
+            type=CheckType.not_empty_pct,
+            dimensions=["customer_id", "product_id"],
+            condition=Condition.le,
+            threshold=0.1,  # 10% threshold
+        )
+
+        check = CheckNotEmptyPct(
+            "run_123", check_config, mock_driver, "test_db", mock_metric_store
+        )
+
+        # Mock database responses: 5% NULLs in customer_id, 8% NULLs in product_id (both <= 10%)
+        mock_driver.execute_query.side_effect = [[(0.05,)], [(0.08,)]]
+
+        results = check.run(verbose=False)
+
+        assert len(results) == 2  # One result per dimension
+        assert results[0]["success"] == True  # customer_id: 5% <= 10%
+        assert results[0]["actual_value"] == 0.05
+        assert results[0]["threshold"] == 0.1
+        assert "customer_id_not_empty_pct" in results[0]["name"]
+        
+        assert results[1]["success"] == True  # product_id: 8% <= 10%
+        assert results[1]["actual_value"] == 0.08
+        assert results[1]["threshold"] == 0.1
+        assert "product_id_not_empty_pct" in results[1]["name"]
+
+    def test_not_empty_pct_check_fails_threshold(self, mock_driver, mock_metric_store):
+        """Test CheckNotEmptyPct fails when NULL percentage exceeds threshold."""
+        check_config = Check(
+            name="test_not_empty_pct_fail",
+            dataset="orders",
+            type=CheckType.not_empty_pct,
+            dimensions=["customer_id", "product_id"],
+            condition=Condition.le,
+            threshold=0.1,  # 10% threshold
+        )
+
+        check = CheckNotEmptyPct(
+            "run_123", check_config, mock_driver, "test_db", mock_metric_store
+        )
+
+        # Mock database responses: 15% NULLs in customer_id, 5% NULLs in product_id
+        mock_driver.execute_query.side_effect = [[(0.15,)], [(0.05,)]]
+
+        results = check.run(verbose=False)
+
+        assert len(results) == 2  # One result per dimension
+        assert results[0]["success"] == False  # customer_id: 15% > 10%
+        assert results[0]["actual_value"] == 0.15
+        assert results[0]["threshold"] == 0.1
+        assert "customer_id_not_empty_pct" in results[0]["name"]
+        
+        assert results[1]["success"] == True  # product_id: 5% <= 10%
+        assert results[1]["actual_value"] == 0.05
+        assert results[1]["threshold"] == 0.1
+        assert "product_id_not_empty_pct" in results[1]["name"]
+
+    def test_not_empty_pct_check_default_threshold(self, mock_driver, mock_metric_store):
+        """Test CheckNotEmptyPct uses default threshold of 0.0 when not specified."""
+        check_config = Check(
+            name="test_not_empty_pct_default",
+            dataset="orders",
+            type=CheckType.not_empty_pct,
+            dimensions=["customer_id"],
+            condition=Condition.le,
+            # No threshold specified
+        )
+
+        check = CheckNotEmptyPct(
+            "run_123", check_config, mock_driver, "test_db", mock_metric_store
+        )
+
+        # Mock database response: 0% NULLs in customer_id
+        mock_driver.execute_query.return_value = [(0.0,)]
+
+        results = check.run(verbose=False)
+
+        assert len(results) == 1
+        assert results[0]["success"] == True  # 0% <= 0% (default threshold)
+        assert results[0]["actual_value"] == 0.0
+        assert results[0]["threshold"] == 0.0  # Default threshold
+
+    def test_not_empty_pct_check_boundary_conditions(self, mock_driver, mock_metric_store):
+        """Test CheckNotEmptyPct boundary conditions with exact threshold values."""
+        check_config = Check(
+            name="test_not_empty_pct_boundary",
+            dataset="orders",
+            type=CheckType.not_empty_pct,
+            dimensions=["customer_id"],
+            condition=Condition.le,
+            threshold=0.1,  # Exactly 10%
+        )
+
+        check = CheckNotEmptyPct(
+            "run_123", check_config, mock_driver, "test_db", mock_metric_store
+        )
+
+        # Mock database response: exactly 10% NULLs
+        mock_driver.execute_query.return_value = [(0.1,)]
+
+        results = check.run(verbose=False)
+
+        assert len(results) == 1
+        assert results[0]["success"] == True  # 10% <= 10%
+        assert results[0]["actual_value"] == 0.1
+        assert results[0]["threshold"] == 0.1
+
+    def test_not_empty_pct_check_sql_generation(self, mock_driver, mock_metric_store):
+        """Test CheckNotEmptyPct generates correct SQL for percentage calculation."""
+        check_config = Check(
+            name="test_not_empty_pct_sql",
+            dataset="orders",
+            type=CheckType.not_empty_pct,
+            dimensions=["customer_id"],
+            condition=Condition.le,
+            threshold=0.05,  # 5% threshold
+            filter="status = 'active'",
+        )
+
+        check = CheckNotEmptyPct(
+            "run_123", check_config, mock_driver, "test_db", mock_metric_store
+        )
+
+        # Mock database response
+        mock_driver.execute_query.return_value = [(0.03,)]
+
+        results = check.run(verbose=True)
+
+        # Verify the query was called
+        mock_driver.execute_query.assert_called()
+        # The query should calculate percentage: 
+        # CAST(SUM(CASE WHEN customer_id IS NULL THEN 1 ELSE 0 END) AS FLOAT) / CAST(COUNT(*) AS FLOAT)
+        
+        assert len(results) == 1
+        assert results[0]["success"] == True  # 3% <= 5%
+        assert results[0]["actual_value"] == 0.03
+
+    def test_not_empty_pct_check_inheritance_behavior(self, mock_driver, mock_metric_store):
+        """Test that CheckNotEmptyPct properly inherits from CheckNotEmpty."""
+        # Verify that CheckNotEmptyPct is a subclass of CheckNotEmpty
+        assert issubclass(CheckNotEmptyPct, CheckNotEmpty)
+        
+        check_config = Check(
+            name="test_inheritance",
+            dataset="orders",
+            type=CheckType.not_empty_pct,
+            dimensions=["customer_id"],
+            condition=Condition.le,
+            threshold=0.1,
+        )
+
+        check = CheckNotEmptyPct(
+            "run_123", check_config, mock_driver, "test_db", mock_metric_store
+        )
+
+        # Test that inherited methods work correctly
+        assert check.get_default_threshold() == 0.0
+        assert check.get_check_suffix() == "not_empty_pct"
+        
+        # Test that the SQL generation is different from parent
+        parent_sql = CheckNotEmpty.get_null_count_sql(check, "test_column")
+        child_sql = check.get_null_count_sql("test_column")
+        
+        assert parent_sql != child_sql
+        assert "FLOAT" in child_sql  # Percentage calculation uses FLOAT casting
+        assert "/" in child_sql  # Percentage calculation uses division

@@ -61,7 +61,12 @@ class BaseCheck:
         if condition == Condition.neq:
             return value != threshold
         if condition == Condition.between:
-            return value >= threshold[0] and value <= threshold[1]
+            if isinstance(threshold, list) and len(threshold) == 2:
+                return value >= threshold[0] and value <= threshold[1]
+            else:
+                raise ValueError(
+                    "Condition 'between' requires a threshold list with two elements"
+                )
         raise Exception(f"Condition not implemented yet {condition}")
 
     def generate_check_id(self, dataset: str, check_name: str) -> str:
@@ -142,13 +147,21 @@ class BaseCheck:
             self.process_dataset(exp, results, verbose)
         return results
 
-    def process_dataset(self, dataset_exp: Union[Table, str], results: List[Any], verbose: bool) -> None:
+    def process_dataset(
+        self, dataset_exp: Union[Table, str], results: List[Any], verbose: bool
+    ) -> None:
         """Process a single dataset. Can be overridden by subclasses for custom logic."""
         q = self.get_query(dataset_exp, verbose)
         rows = self.execute_query(q, verbose)
         self.process_query_results(rows, dataset_exp, results, verbose)
 
-    def process_query_results(self, rows: List[Any], dataset_exp: Union[Table, str], results: List[Any], verbose: bool) -> None:
+    def process_query_results(
+        self,
+        rows: List[Any],
+        dataset_exp: Union[Table, str],
+        results: List[Any],
+        verbose: bool,
+    ) -> None:
         """Process query results. Can be overridden by subclasses for custom result processing."""
         if self.check.dimensions or self.check.time_dimension:
             for row in rows:

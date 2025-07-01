@@ -19,6 +19,7 @@ class CheckType(str, Enum):
     min = "min"
     max = "max"
     not_empty = "not_empty"
+    not_empty_pct = "not_empty_pct"
 
 
 class DBType(str, Enum):
@@ -85,7 +86,7 @@ class Check(BaseModel):
     fail: Optional[bool] = False
     threshold: Optional[
         Union[Union[int, float, Decimal], List[Union[int, float, Decimal]]]
-    ] = None
+    ] = 0
     dimensions: List[str] = []
     filter: List[str] = []
     time_dimension: Optional[TimeDimension] = None
