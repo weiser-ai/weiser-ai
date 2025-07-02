@@ -31,8 +31,9 @@ const FeatureList = [
     description: (
       <>
         From startup analytics to enterprise data warehouses. Supports
-        PostgreSQL, Cube.js semantic layers, and scales to handle millions of
-        records with advanced statistical analysis and anomaly detection.
+        PostgreSQL, Snowflake, Cube semantic layer, and scales to handle
+        millions of records with advanced statistical analysis and anomaly
+        detection.
       </>
     ),
   },

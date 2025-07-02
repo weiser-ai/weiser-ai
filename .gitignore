@@ -163,6 +163,7 @@ cython_debug/
 postgres-data/
 .cubestore/
 metricstore.db
+*.db
 minio_data/
 .vscode/
 .npmrc

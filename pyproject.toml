@@ -1,7 +1,7 @@
 
 [project]
 name = "weiser-ai"
-version = "0.1.13"
+version = "0.1.14"
 description = "Enterprise-grade data quality framework with YAML configuration, LLM-friendly design, and advanced statistical validation"
 keywords = ["data-quality", "data-validation", "data-testing", "sql", "yaml", "llm", "ai"]
 authors = [
@@ -24,6 +24,7 @@ dependencies = [
     "sqlglot==20.5.0",
     "pyyaml==6.0.2",
     "slack-sdk>=3.34.0",
+    "snowflake-sqlalchemy>=1.7.5",
 ]
 requires-python = ">=3.10"
 readme = "README.md"

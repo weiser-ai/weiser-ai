@@ -26,6 +26,7 @@ class DBType(str, Enum):
     postgresql = "postgresql"
     mysql = "mysql"
     cube = "cube"
+    snowflake = "snowflake"
 
 
 class MetricStoreType(str, Enum):
@@ -108,6 +109,11 @@ class Datasource(BaseModel):
     db_name: Optional[str] = None
     password: Optional[SecretStr] = None
     port: Optional[int] = None
+    # Snowflake-specific fields
+    account: Optional[str] = None
+    warehouse: Optional[str] = None
+    role: Optional[str] = None
+    schema: Optional[str] = None
 
     class Config:
         use_enum_values = True

@@ -6,6 +6,7 @@ from sqlalchemy.engine.url import URL
 
 from weiser.drivers.base import BaseDriver, DIALECT_TYPE_MAP
 from weiser.drivers import DriverFactory
+from weiser.drivers.snowflake import SnowflakeDriver
 from weiser.drivers.metric_stores import MetricStoreFactory, DuckDBMetricStore
 from weiser.drivers.metric_stores.postgres import PostgresMetricStore
 from weiser.loader.models import Datasource, MetricStore, DBType, MetricStoreType, S3UrlStyle
@@ -89,6 +90,7 @@ class TestBaseDriver:
         assert DIALECT_TYPE_MAP["postgresql"].__name__ == "Postgres"
         assert DIALECT_TYPE_MAP["mysql"].__name__ == "MySQL"
         assert DIALECT_TYPE_MAP["cube"].__name__ == "Postgres"
+        assert DIALECT_TYPE_MAP["snowflake"].__name__ == "Snowflake"
 
     @patch('weiser.drivers.base.create_engine')
     def test_execute_query_success(self, mock_create_engine, sample_datasource):
@@ -198,6 +200,141 @@ class TestDriverFactory:
             call_args = mock_create_engine.call_args[0][0]
             assert "mysql://" in str(call_args)
 
+    def test_create_snowflake_driver(self):
+        """Test factory creates Snowflake driver."""
+        datasource = Datasource(
+            name="snowflake_db",
+            type=DBType.snowflake,
+            account="test-account",
+            db_name="test_db",
+            user="user",
+            password="pass",
+            warehouse="COMPUTE_WH",
+            role="ANALYST",
+            schema="public"
+        )
+        
+        with patch('weiser.drivers.base.create_engine') as mock_create_engine:
+            mock_engine = Mock()
+            mock_create_engine.return_value = mock_engine
+            
+            driver = DriverFactory.create_driver(datasource)
+            
+            assert isinstance(driver, SnowflakeDriver)
+            # Should have called create_engine with Snowflake URL
+            mock_create_engine.assert_called_once()
+
+
+class TestSnowflakeDriver:
+    """Test SnowflakeDriver functionality."""
+
+    def test_snowflake_driver_initialization_with_warehouse(self):
+        """Test SnowflakeDriver initialization with warehouse and role."""
+        datasource = Datasource(
+            name="snowflake_db",
+            type=DBType.snowflake,
+            account="test-account",
+            db_name="test_database",
+            user="test_user",
+            password="test_password",
+            warehouse="COMPUTE_WH",
+            role="ANALYST"
+        )
+        
+        with patch('weiser.drivers.base.create_engine') as mock_create_engine:
+            mock_engine = Mock()
+            mock_create_engine.return_value = mock_engine
+            
+            driver = SnowflakeDriver(datasource)
+            
+            assert driver.data_source == datasource
+            # Check that create_engine was called
+            mock_create_engine.assert_called_once()
+
+    def test_snowflake_driver_initialization_with_schema(self):
+        """Test SnowflakeDriver initialization with schema."""
+        datasource = Datasource(
+            name="snowflake_db",
+            type=DBType.snowflake,
+            account="test-account",
+            db_name="test_database",
+            user="test_user",
+            password="test_password",
+            warehouse="COMPUTE_WH",
+            role="ANALYST",
+            schema="public"
+        )
+        
+        with patch('weiser.drivers.base.create_engine') as mock_create_engine:
+            mock_engine = Mock()
+            mock_create_engine.return_value = mock_engine
+            
+            driver = SnowflakeDriver(datasource)
+            
+            # Verify engine was called
+            mock_create_engine.assert_called_once()
+
+    def test_snowflake_driver_initialization_with_uri(self):
+        """Test SnowflakeDriver initialization with pre-configured URI."""
+        datasource = Datasource(
+            name="snowflake_db",
+            type=DBType.snowflake,
+            uri="snowflake://user:pass@account.snowflakecomputing.com/database?warehouse=WH&role=ROLE"
+        )
+        
+        with patch('weiser.drivers.base.create_engine') as mock_create_engine:
+            mock_engine = Mock()
+            mock_create_engine.return_value = mock_engine
+            
+            driver = SnowflakeDriver(datasource)
+            
+            assert driver.data_source == datasource
+            # Check that create_engine was called with the provided URI
+            mock_create_engine.assert_called_once()
+
+    @patch('weiser.drivers.base.create_engine')
+    def test_snowflake_execute_query_success(self, mock_create_engine):
+        """Test successful query execution with Snowflake driver."""
+        datasource = Datasource(
+            name="snowflake_db",
+            type=DBType.snowflake,
+            account="test-account",
+            db_name="test_db",
+            user="user",
+            password="pass",
+            warehouse="COMPUTE_WH",
+            role="ANALYST"
+        )
+        
+        # Setup mocks
+        mock_engine = Mock()
+        mock_connection = Mock()
+        mock_result = [(100,), (200,)]
+        
+        mock_create_engine.return_value = mock_engine
+        
+        # Properly mock the context manager
+        context_manager = MagicMock()
+        context_manager.__enter__ = Mock(return_value=mock_connection)
+        context_manager.__exit__ = Mock(return_value=None)
+        mock_engine.connect.return_value = context_manager
+        
+        mock_connection.execute.return_value = mock_result
+        
+        driver = SnowflakeDriver(datasource)
+        
+        # Create a mock query
+        mock_query = Mock()
+        mock_query.sql.return_value = "SELECT COUNT(*) FROM orders"
+        
+        mock_check = Mock()
+        mock_check.model_dump.return_value = {"name": "test_check"}
+        
+        result = driver.execute_query(mock_query, mock_check, verbose=False)
+        
+        assert result == mock_result
+        mock_connection.execute.assert_called_once()
+
 
 class TestDuckDBMetricStore:
     """Test DuckDBMetricStore functionality."""
@@ -256,6 +393,7 @@ class TestDuckDBMetricStore:
             db_type=MetricStoreType.duckdb,
             s3_url_style=S3UrlStyle.path,
             s3_endpoint="localhost:9000",
+            s3_bucket="test-bucket",
             s3_access_key="test_key",
             s3_secret_access_key="test_secret"
         )

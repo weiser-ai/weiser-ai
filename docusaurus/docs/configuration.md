@@ -31,8 +31,11 @@ checks:
 includes:
   - path/to/additional/config.yaml
 
-slack_url: https://hooks.slack.com/services/...
 ```
+
+## Environment Variables (Recommended)
+Your configuration can use environment variables for sensitive information, weiser will read your .env file and replace the variables in the configuration.
+Environment variables already defined in your system can also be used. They are available in the configuration as `{{VARIABLE_NAME}}`.
 
 ## Datasources
 
@@ -48,7 +51,7 @@ datasources:
     port: 5432
     db_name: production
     user: weiser_user
-    password: ${POSTGRES_PASSWORD}
+    password: mysecretpassword
 ```
 
 ### MySQL
@@ -61,7 +64,7 @@ datasources:
     port: 3306
     db_name: analytics
     user: analytics_user
-    password: ${MYSQL_PASSWORD}
+    password: {{MYSQL_PASSWORD}}
 ```
 
 ### Cube.js
@@ -107,7 +110,7 @@ connections:
     port: 5432
     db_name: metrics
     user: metrics_user
-    password: ${METRICS_PASSWORD}
+    password: {{METRICS_PASSWORD}}
 ```
 
 ### S3 Storage (DuckDB with S3)
@@ -117,8 +120,8 @@ connections:
   - name: metricstore
     type: metricstore
     db_type: duckdb
-    s3_access_key: ${S3_ACCESS_KEY}
-    s3_secret_access_key: ${S3_SECRET_KEY}
+    s3_access_key: {{S3_ACCESS_KEY}}
+    s3_secret_access_key: {{S3_SECRET_KEY}}
     s3_endpoint: s3.amazonaws.com
     s3_bucket: weiser-metrics
     s3_region: us-east-1
@@ -276,10 +279,10 @@ Use environment variables for sensitive data:
 datasources:
   - name: prod
     type: postgresql
-    host: ${DB_HOST}
-    user: ${DB_USER}
-    password: ${DB_PASSWORD}
-    db_name: ${DB_NAME}
+    host: {{DB_HOST}}
+    user: {{DB_USER}}
+    password: {{DB_PASSWORD}}
+    db_name: {{DB_NAME}}
 ```
 
 Set environment variables:
@@ -327,7 +330,7 @@ checks:
     dataset: orders
     type: row_count
     condition: gt
-    threshold: ${min_row_count}
+    threshold: 0
 ```
 
 ## Slack Integration
@@ -384,11 +387,11 @@ version: 1
 datasources:
   - name: warehouse
     type: postgresql
-    host: ${WAREHOUSE_HOST}
+    host: localhost
     port: 5432
     db_name: analytics
-    user: ${WAREHOUSE_USER}
-    password: ${WAREHOUSE_PASSWORD}
+    user: MyUser
+    password: MyPassword
 
 connections:
   - name: metricstore
@@ -425,15 +428,7 @@ checks:
     type: not_empty_pct
     dimensions: [email, phone]
     condition: le
-    threshold: 0.05 # Max 5% NULL values
+    # Max 5% NULL values
+    threshold: 0.05
 
-  # Anomaly detection
-  - name: orders_anomaly
-    dataset: metrics
-    type: anomaly
-    check_id: c5cee10898e30edd1c0dde3f24966b4c47890fcf247e5b630c2c156f7ac7ba22
-    condition: between
-    threshold: [-3.0, 3.0]
-
-slack_url: ${SLACK_WEBHOOK_URL}
 ```

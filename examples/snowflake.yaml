@@ -1,0 +1,26 @@
+version: 1
+datasources:
+  - name: default
+    type: snowflake
+    account: {{SNOWFLAKE_ACCOUNT}}
+    db_name: {{SNOWFLAKE_DB_NAME}}
+    user: {{SNOWFLAKE_USER}}
+    password: {{SNOWFLAKE_PASSWORD}}
+    warehouse: {{SNOWFLAKE_WAREHOUSE}}
+    role: {{SNOWFLAKE_ROLE}}
+    schema: {{SNOWFLAKE_SCHEMA}}
+
+
+connections:
+  - name: metricstore
+    type: metricstore
+    db_type: duckdb
+    db_name: "./metricstore_sf.db"
+
+checks:
+  - name: test row_count
+    dataset:
+      - LINEITEM
+    type: row_count
+    condition: gt
+    threshold: 0

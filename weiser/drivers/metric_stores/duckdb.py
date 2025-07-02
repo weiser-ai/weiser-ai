@@ -11,27 +11,39 @@ from weiser.loader.models import MetricStore, S3UrlStyle
 class DuckDBMetricStore:
     def __init__(self, config: MetricStore) -> None:
         self.config = config
-        self.s3_client = boto3.client(
-            "s3",
-            region_name=self.config.s3_region,
-            aws_access_key_id=self.config.s3_access_key,
-            aws_secret_access_key=self.config.s3_secret_access_key,
-        )
+        self.s3_client = None
+
+        # Only initialize S3 client if S3 configuration is provided
+        if self._has_s3_config():
+            self.s3_client = boto3.client(
+                "s3",
+                region_name=self.config.s3_region,
+                aws_access_key_id=self.config.s3_access_key,
+                aws_secret_access_key=self.config.s3_secret_access_key,
+            )
+
         self.db_name = config.db_name
         self.dialect = DuckDB
         if not self.db_name:
             self.db_name = "./metricstore.db"
+
         with duckdb.connect(self.db_name) as conn:
-            conn.sql("INSTALL httpfs;")
-            conn.sql("LOAD httpfs;")
-            if self.config.s3_url_style == S3UrlStyle.path:
-                conn.sql(f"SET s3_url_style='{self.config.s3_url_style}'")
-            elif self.config.s3_url_style == S3UrlStyle.vhost:
-                conn.sql(f"SET s3_region = '{self.config.s3_region}'")
-            if self.config.s3_endpoint:
-                conn.sql(f"SET s3_endpoint = '{self.config.s3_endpoint}'")
-            conn.sql(f"SET s3_access_key_id = '{self.config.s3_access_key}'")
-            conn.sql(f"SET s3_secret_access_key = '{self.config.s3_secret_access_key}'")
+            # Only configure S3 settings if S3 is configured
+            if self._has_s3_config():
+                conn.sql("INSTALL httpfs;")
+                conn.sql("LOAD httpfs;")
+                if self.config.s3_url_style == S3UrlStyle.path:
+                    conn.sql(f"SET s3_url_style='{self.config.s3_url_style}'")
+                elif self.config.s3_url_style == S3UrlStyle.vhost:
+                    conn.sql(f"SET s3_region = '{self.config.s3_region}'")
+                if self.config.s3_endpoint:
+                    conn.sql(f"SET s3_endpoint = '{self.config.s3_endpoint}'")
+                conn.sql(f"SET s3_access_key_id = '{self.config.s3_access_key}'")
+                conn.sql(
+                    f"SET s3_secret_access_key = '{self.config.s3_secret_access_key}'"
+                )
+
+            # Create the metrics table
             conn.sql(
                 """CREATE TABLE IF NOT EXISTS metrics (
                      actual_value DOUBLE,
@@ -50,20 +62,38 @@ class DuckDBMetricStore:
                      type VARCHAR
                      )"""
             )
-            res = conn.sql(
-                """SELECT MAX(run_time) AS run_time FROM metrics"""
-            ).fetchall()
-            last_run_time = "1=1"
-            if res and res[0][0]:
-                last_run_time = f"run_time > '{res[0][0]}'"
-            conn.sql(
-                f"""
-                INSERT INTO metrics SELECT * FROM 's3://{self.config.s3_bucket}/metrics/*.parquet' WHERE {last_run_time};
-                """
-            )
+
+            # Only attempt S3 import if S3 is configured
+            if self._has_s3_config():
+                res = conn.sql(
+                    """SELECT MAX(run_time) AS run_time FROM metrics"""
+                ).fetchall()
+                last_run_time = "1=1"
+                if res and res[0][0]:
+                    last_run_time = f"run_time > '{res[0][0]}'"
+                try:
+                    conn.sql(
+                        f"""
+                        INSERT INTO metrics SELECT * FROM 's3://{self.config.s3_bucket}/metrics/*.parquet' WHERE {last_run_time};
+                        """
+                    )
+                except Exception:
+                    # Ignore errors when S3 data doesn't exist yet
+                    pass
+
+    def _has_s3_config(self) -> bool:
+        """Check if S3 configuration is properly provided."""
+        return (
+            self.config.s3_bucket is not None
+            and self.config.s3_access_key is not None
+            and self.config.s3_secret_access_key is not None
+        )
 
     # Delete Parquet files
     def delete_parquet_files(self, prefix):
+        if not self._has_s3_config() or not self.s3_client:
+            return
+
         bucket_name = self.config.s3_bucket
         response = self.s3_client.list_objects_v2(Bucket=bucket_name, Prefix=prefix)
 
@@ -75,6 +105,9 @@ class DuckDBMetricStore:
 
     # Move Parquet files
     def move_file(self, source_key, destination_key):
+        if not self._has_s3_config() or not self.s3_client:
+            return
+
         bucket_name = self.config.s3_bucket
         copy_source = {"Bucket": bucket_name, "Key": source_key}
         # Copy the file to the new location
@@ -141,11 +174,8 @@ class DuckDBMetricStore:
 
     def export_results(self, run_id):
         # First get the results
-        results = {
-            'summary': {},
-            'failures': []
-        }
-        
+        results = {"summary": {}, "failures": []}
+
         with duckdb.connect(self.db_name) as conn:
             # Get summary statistics
             summary_query = f"""
@@ -157,12 +187,12 @@ class DuckDBMetricStore:
                 WHERE run_id = '{run_id}'
             """
             summary_results = conn.sql(summary_query).fetchone()
-            results['summary'] = {
-                'total_checks': summary_results[0],
-                'passed_checks': summary_results[1],
-                'failed_checks': summary_results[2]
+            results["summary"] = {
+                "total_checks": summary_results[0],
+                "passed_checks": summary_results[1],
+                "failed_checks": summary_results[2],
             }
-            
+
             # Get detailed failure information (max 20 rows)
             failures_query = f"""
                 SELECT 
@@ -180,19 +210,23 @@ class DuckDBMetricStore:
                 LIMIT 20
             """
             failure_results = conn.sql(failures_query).fetchall()
-            columns = ['name', 'dataset', 'datasource', 'check_id', 'condition', 'actual_value', 'threshold', 'type']
-            
+            columns = [
+                "name",
+                "dataset",
+                "datasource",
+                "check_id",
+                "condition",
+                "actual_value",
+                "threshold",
+                "type",
+            ]
+
             for row in failure_results:
                 failure_dict = {col: val for col, val in zip(columns, row)}
-                results['failures'].append(failure_dict)
-        
+                results["failures"].append(failure_dict)
 
         # Now handle S3 export if configured
-        if (
-            self.config.s3_bucket
-            and self.config.s3_access_key
-            and self.config.s3_secret_access_key
-        ):
+        if self._has_s3_config() and self.s3_client:
             with duckdb.connect(self.db_name) as conn:
                 conn.sql("INSTALL httpfs;")
                 conn.sql("LOAD httpfs;")
@@ -203,7 +237,9 @@ class DuckDBMetricStore:
                 if self.config.s3_endpoint:
                     conn.sql(f"SET s3_endpoint = '{self.config.s3_endpoint}'")
                 conn.sql(f"SET s3_access_key_id = '{self.config.s3_access_key}'")
-                conn.sql(f"SET s3_secret_access_key = '{self.config.s3_secret_access_key}'")
+                conn.sql(
+                    f"SET s3_secret_access_key = '{self.config.s3_secret_access_key}'"
+                )
                 conn.sql(
                     f"COPY (SELECT * FROM metrics WHERE run_id='{run_id}') TO 's3://{self.config.s3_bucket}/metrics/{run_id}.parquet' (FORMAT 'parquet');"
                 )
