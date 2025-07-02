@@ -20,4 +20,70 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.codeExample {
+  padding: 4rem 0;
+  background-color: var(--ifm-color-emphasis-100);
+}
+
+.codeExample h2 {
+  margin-bottom: 1rem;
+  color: var(--ifm-color-primary);
+}
+
+.codeExample pre {
+  background-color: var(--ifm-color-emphasis-200);
+  border-radius: 8px;
+  padding: 1.5rem;
+  margin: 1rem 0;
+  overflow-x: auto;
+  font-size: 0.85rem;
+  line-height: 1.4;
+}
+
+.codeExample code {
+  color: var(--ifm-color-content);
+  background: none;
+  font-family: var(--ifm-font-family-monospace);
+}
+
+.llmFeatures {
+  margin-top: 2rem;
+}
+
+.feature {
+  margin-bottom: 1.5rem;
+  padding: 1rem;
+  background-color: var(--ifm-background-color);
+  border-radius: 8px;
+  border-left: 4px solid var(--ifm-color-primary);
+}
+
+.feature strong {
+  display: block;
+  margin-bottom: 0.5rem;
+  color: var(--ifm-color-primary);
+}
+
+.feature p {
+  margin: 0;
+  color: var(--ifm-color-content-secondary);
+  font-size: 0.9rem;
+}
+
+@media screen and (max-width: 996px) {
+  .codeExample {
+    padding: 2rem 0;
+  }
+  
+  .codeExample .row {
+    flex-direction: column;
+  }
+  
+  .codeExample pre {
+    font-size: 0.75rem;
+  }
 }

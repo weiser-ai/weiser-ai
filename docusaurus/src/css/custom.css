@@ -4,27 +4,93 @@
  * work well for content-centric websites.
  */
 
-/* You can override the default Infima variables here. */
+/* Weiser brand colors: #FF99BF (pink) and #0B4E89 (blue) */
 :root {
-  --ifm-color-primary: #2e8555;
-  --ifm-color-primary-dark: #29784c;
-  --ifm-color-primary-darker: #277148;
-  --ifm-color-primary-darkest: #205d3b;
-  --ifm-color-primary-light: #33925d;
-  --ifm-color-primary-lighter: #359962;
-  --ifm-color-primary-lightest: #3cad6e;
+  --ifm-color-primary: #0B4E89;
+  --ifm-color-primary-dark: #0a4479;
+  --ifm-color-primary-darker: #094072;
+  --ifm-color-primary-darkest: #08355e;
+  --ifm-color-primary-light: #0c5899;
+  --ifm-color-primary-lighter: #0d5ca6;
+  --ifm-color-primary-lightest: #0f6bb3;
+  
+  /* Secondary color (pink) for accents */
+  --ifm-color-secondary: #FF99BF;
+  --ifm-color-secondary-dark: #ff7fab;
+  --ifm-color-secondary-darker: #ff72a3;
+  --ifm-color-secondary-darkest: #ff4d87;
+  --ifm-color-secondary-light: #ffb3d3;
+  --ifm-color-secondary-lighter: #ffc0db;
+  --ifm-color-secondary-lightest: #ffe6f0;
+  
   --ifm-code-font-size: 95%;
-  --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.1);
+  --docusaurus-highlighted-code-line-bg: rgba(11, 78, 137, 0.1);
+  
+  /* Custom Weiser variables */
+  --weiser-pink: #FF99BF;
+  --weiser-blue: #0B4E89;
+  --weiser-gradient: linear-gradient(135deg, #0B4E89 0%, #FF99BF 100%);
 }
 
 /* For readability concerns, you should choose a lighter palette in dark mode. */
 [data-theme='dark'] {
-  --ifm-color-primary: #25c2a0;
-  --ifm-color-primary-dark: #21af90;
-  --ifm-color-primary-darker: #1fa588;
-  --ifm-color-primary-darkest: #1a8870;
-  --ifm-color-primary-light: #29d5b0;
-  --ifm-color-primary-lighter: #32d8b4;
-  --ifm-color-primary-lightest: #4fddbf;
-  --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.3);
+  --ifm-color-primary: #4A9EFF;
+  --ifm-color-primary-dark: #2B8CFF;
+  --ifm-color-primary-darker: #1A82FF;
+  --ifm-color-primary-darkest: #0066FF;
+  --ifm-color-primary-light: #69AFFF;
+  --ifm-color-primary-lighter: #78B5FF;
+  --ifm-color-primary-lightest: #96C7FF;
+  
+  /* Secondary color (lighter pink) for dark mode */
+  --ifm-color-secondary: #FFB3D9;
+  --ifm-color-secondary-dark: #FF99CF;
+  --ifm-color-secondary-darker: #FF8CC9;
+  --ifm-color-secondary-darkest: #FF66B8;
+  --ifm-color-secondary-light: #FFCCE3;
+  --ifm-color-secondary-lighter: #FFD9E9;
+  --ifm-color-secondary-lightest: #FFF2F8;
+  
+  --docusaurus-highlighted-code-line-bg: rgba(74, 158, 255, 0.2);
+  
+  /* Custom Weiser variables for dark mode */
+  --weiser-pink: #FFB3D9;
+  --weiser-blue: #4A9EFF;
+  --weiser-gradient: linear-gradient(135deg, #4A9EFF 0%, #FFB3D9 100%);
+}
+
+/* Hero banner gradient background */
+.hero--primary {
+  background: var(--weiser-gradient);
+  color: white;
+}
+
+.hero--primary .hero__title,
+.hero--primary .hero__subtitle {
+  color: white;
+}
+
+/* Custom button styles */
+.button--secondary {
+  background-color: var(--weiser-pink);
+  border-color: var(--weiser-pink);
+  color: white;
+}
+
+.button--secondary:hover {
+  background-color: var(--ifm-color-secondary-dark);
+  border-color: var(--ifm-color-secondary-dark);
+  color: white;
+}
+
+.button--outline.button--secondary {
+  background-color: transparent;
+  border-color: white;
+  color: white;
+}
+
+.button--outline.button--secondary:hover {
+  background-color: white;
+  border-color: white;
+  color: var(--weiser-blue);
 }
