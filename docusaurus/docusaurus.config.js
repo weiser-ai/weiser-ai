@@ -28,6 +28,16 @@ const config = {
   onBrokenLinks: "throw",
   onBrokenMarkdownLinks: "warn",
 
+  scripts: [
+    {
+      src: "https://www.googletagmanager.com/gtag/js?id=G-CDMVGW2B13",
+      async: true,
+    },
+    {
+      src: "/js/gtag.js",
+    },
+  ],
+
   // Even if you don't use internationalization, you can use this field to set
   // useful metadata like html lang. For example, if your site is Chinese, you
   // may want to replace "en" with "zh-Hans".
@@ -66,10 +76,10 @@ const config = {
         theme: {
           customCss: "./src/css/custom.css",
         },
-        gtag: {
-          trackingID: 'G-CDMVGW2B13',
-          anonymizeIP: true,
-        },
+        // gtag: {
+        //   trackingID: 'G-CDMVGW2B13',
+        //   anonymizeIP: true,
+        // },
       }),
     ],
   ],
