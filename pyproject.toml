@@ -1,9 +1,13 @@
 
 [project]
 name = "weiser-ai"
-version = "0.1.12"
-description = "Data Quality powered by AI"
+version = "0.1.13"
+description = "Enterprise-grade data quality framework with YAML configuration, LLM-friendly design, and advanced statistical validation"
+keywords = ["data-quality", "data-validation", "data-testing", "sql", "yaml", "llm", "ai"]
 authors = [
+    {name = "Paco Valdez", email = "paco.valdez@berkeley.edu"},
+]
+maintainers = [
     {name = "Paco Valdez", email = "paco.valdez@berkeley.edu"},
 ]
 dependencies = [
@@ -23,14 +27,37 @@ dependencies = [
 ]
 requires-python = ">=3.10"
 readme = "README.md"
-license = {text = "MIT"}
+license = "MIT"
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Information Technology",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Database",
+    "Topic :: Software Development :: Quality Assurance",
+    "Topic :: Software Development :: Testing",
+    "Typing :: Typed",
+]
+
+[project.urls]
+"Homepage" = "https://weiser.ai"
+"Documentation" = "https://weiser.ai"
+"Repository" = "https://github.com/weiser-ai/weiser-ai"
+"Bug Tracker" = "https://github.com/weiser-ai/weiser-ai/issues"
 
 [project.scripts]
 weiser = "weiser.main:app"
 
 [build-system]
-requires = ["pdm-backend"]
-build-backend = "pdm.backend"
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["weiser*"]
+exclude = ["tests*", "docusaurus*", "weiser-ui*"]
 
 [tool.pdm.dev-dependencies]
 test = [
