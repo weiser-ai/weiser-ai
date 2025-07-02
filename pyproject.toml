@@ -52,12 +52,11 @@ classifiers = [
 weiser = "weiser.main:app"
 
 [build-system]
-requires = ["setuptools>=61.0", "wheel"]
-build-backend = "setuptools.build_meta"
+requires = ["pdm-backend"]
+build-backend = "pdm.backend"
 
-[tool.setuptools.packages.find]
-include = ["weiser*"]
-exclude = ["tests*", "docusaurus*", "weiser-ui*"]
+[tool.pdm.build]
+source-includes = ["weiser/"]
 
 [tool.pdm.dev-dependencies]
 test = [
