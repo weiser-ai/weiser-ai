@@ -66,6 +66,10 @@ const config = {
         theme: {
           customCss: "./src/css/custom.css",
         },
+        gtag: {
+          trackingID: 'G-CDMVGW2B13',
+          anonymizeIP: true,
+        },
       }),
     ],
   ],
@@ -75,11 +79,6 @@ const config = {
     ({
       // Replace with your project's social card
       image: "img/docusaurus-social-card.jpg",
-      // Google Analytics
-      gtag: {
-        trackingID: 'G-CDMVGW2B13',
-        anonymizeIP: true,
-      },
       navbar: {
         title: "Weiser AI",
         logo: {
