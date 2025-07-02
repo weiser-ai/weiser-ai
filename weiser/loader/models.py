@@ -113,7 +113,7 @@ class Datasource(BaseModel):
     account: Optional[str] = None
     warehouse: Optional[str] = None
     role: Optional[str] = None
-    schema: Optional[str] = None
+    schema_name: Optional[str] = None
 
     class Config:
         use_enum_values = True

@@ -210,7 +210,7 @@ datasources:
     password: secure_password
     warehouse: COMPUTE_WH
     role: ANALYST_ROLE
-    schema: PUBLIC
+    schema_name: PUBLIC
 ```
 
 #### Connection URI
@@ -234,7 +234,7 @@ datasources:
     password: {{SNOWFLAKE_PASSWORD}}
     warehouse: {{SNOWFLAKE_WAREHOUSE}}
     role: {{SNOWFLAKE_ROLE}}
-    schema: {{SNOWFLAKE_SCHEMA}}
+    schema_name: {{SNOWFLAKE_SCHEMA}}
 ```
 
 ### Connection Parameters
@@ -249,7 +249,7 @@ datasources:
 | `password`  | Yes\*    | -       | Snowflake password                                         |
 | `warehouse` | No       | -       | Warehouse to use for compute                               |
 | `role`      | No       | -       | Role to assume for permissions                             |
-| `schema`    | No       | -       | Default schema to use                                      |
+| `schema_name`    | No       | -       | Default schema to use                                      |
 | `uri`       | Yes\*    | -       | Complete connection URI (alternative to individual params) |
 
 \*Either individual parameters OR uri is required

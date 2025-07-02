@@ -211,7 +211,7 @@ class TestDriverFactory:
             password="pass",
             warehouse="COMPUTE_WH",
             role="ANALYST",
-            schema="public"
+            schema_name="public"
         )
         
         with patch('weiser.drivers.base.create_engine') as mock_create_engine:
@@ -262,7 +262,7 @@ class TestSnowflakeDriver:
             password="test_password",
             warehouse="COMPUTE_WH",
             role="ANALYST",
-            schema="public"
+            schema_name="public"
         )
         
         with patch('weiser.drivers.base.create_engine') as mock_create_engine:

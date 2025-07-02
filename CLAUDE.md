@@ -123,7 +123,7 @@ datasources:
     password: {{ SNOWFLAKE_PASSWORD }}
     warehouse: COMPUTE_WH
     role: ANALYST_ROLE
-    schema: PUBLIC
+    schema_name: PUBLIC
 
 checks:
   - name: test row_count

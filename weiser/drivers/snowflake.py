@@ -26,7 +26,7 @@ class SnowflakeDriver(BaseDriver):
                 account=data_source.account,  # This should be the account identifier
                 user=data_source.user,
                 password=data_source.password.get_secret_value(),
-                schema=data_source.schema or "public",
+                schema=data_source.schema_name or "public",
                 warehouse=data_source.warehouse,
                 role=data_source.role,
                 database=data_source.db_name,
