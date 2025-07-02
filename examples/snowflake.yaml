@@ -8,7 +8,7 @@ datasources:
     password: {{SNOWFLAKE_PASSWORD}}
     warehouse: {{SNOWFLAKE_WAREHOUSE}}
     role: {{SNOWFLAKE_ROLE}}
-    schema: {{SNOWFLAKE_SCHEMA}}
+    schema_name: {{SNOWFLAKE_SCHEMA}}
 
 
 connections:
