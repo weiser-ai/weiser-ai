@@ -30,6 +30,10 @@ jobs:
         working-directory: docusaurus
         run: npm run build
 
+      - name: Add Custom Domain
+        working-directory: docusaurus
+        run: echo 'weiser.ai' > ./build/CNAME
+
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
         with:
