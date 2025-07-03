@@ -7,6 +7,7 @@ from sqlalchemy.engine.url import URL
 from weiser.drivers.base import BaseDriver, DIALECT_TYPE_MAP
 from weiser.drivers import DriverFactory
 from weiser.drivers.snowflake import SnowflakeDriver
+from weiser.drivers.databricks import DatabricksDriver
 from weiser.drivers.metric_stores import MetricStoreFactory, DuckDBMetricStore
 from weiser.drivers.metric_stores.postgres import PostgresMetricStore
 from weiser.loader.models import Datasource, MetricStore, DBType, MetricStoreType, S3UrlStyle
@@ -91,6 +92,7 @@ class TestBaseDriver:
         assert DIALECT_TYPE_MAP["mysql"].__name__ == "MySQL"
         assert DIALECT_TYPE_MAP["cube"].__name__ == "Postgres"
         assert DIALECT_TYPE_MAP["snowflake"].__name__ == "Snowflake"
+        assert DIALECT_TYPE_MAP["databricks"].__name__ == "Databricks"
 
     @patch('weiser.drivers.base.create_engine')
     def test_execute_query_success(self, mock_create_engine, sample_datasource):
@@ -224,6 +226,28 @@ class TestDriverFactory:
             # Should have called create_engine with Snowflake URL
             mock_create_engine.assert_called_once()
 
+    def test_create_databricks_driver(self):
+        """Test factory creates Databricks driver."""
+        datasource = Datasource(
+            name="databricks_db",
+            type=DBType.databricks,
+            host="workspace-123.cloud.databricks.com",
+            access_token="dapi123456789abcdef",
+            http_path="/sql/1.0/warehouses/abc123def456",
+            catalog="main",
+            schema_name="default"
+        )
+        
+        with patch('weiser.drivers.base.create_engine') as mock_create_engine:
+            mock_engine = Mock()
+            mock_create_engine.return_value = mock_engine
+            
+            driver = DriverFactory.create_driver(datasource)
+            
+            assert isinstance(driver, DatabricksDriver)
+            # Should have called create_engine with Databricks URL
+            mock_create_engine.assert_called_once()
+
 
 class TestSnowflakeDriver:
     """Test SnowflakeDriver functionality."""
@@ -322,6 +346,147 @@ class TestSnowflakeDriver:
         mock_connection.execute.return_value = mock_result
         
         driver = SnowflakeDriver(datasource)
+        
+        # Create a mock query
+        mock_query = Mock()
+        mock_query.sql.return_value = "SELECT COUNT(*) FROM orders"
+        
+        mock_check = Mock()
+        mock_check.model_dump.return_value = {"name": "test_check"}
+        
+        result = driver.execute_query(mock_query, mock_check, verbose=False)
+        
+        assert result == mock_result
+        mock_connection.execute.assert_called_once()
+
+
+class TestDatabricksDriver:
+    """Test DatabricksDriver functionality."""
+
+    def test_databricks_driver_initialization_with_warehouse(self):
+        """Test DatabricksDriver initialization with warehouse endpoint."""
+        datasource = Datasource(
+            name="databricks_db",
+            type=DBType.databricks,
+            host="workspace-123.cloud.databricks.com",
+            access_token="dapi123456789abcdef",
+            http_path="/sql/1.0/warehouses/abc123def456",
+            catalog="main",
+            schema_name="default"
+        )
+        
+        with patch('weiser.drivers.base.create_engine') as mock_create_engine:
+            mock_engine = Mock()
+            mock_create_engine.return_value = mock_engine
+            
+            driver = DatabricksDriver(datasource)
+            
+            assert driver.data_source == datasource
+            # Check that create_engine was called
+            mock_create_engine.assert_called_once()
+
+    def test_databricks_driver_initialization_with_cluster(self):
+        """Test DatabricksDriver initialization with cluster endpoint."""
+        datasource = Datasource(
+            name="databricks_db",
+            type=DBType.databricks,
+            host="workspace-456.cloud.databricks.com",
+            access_token="dapi987654321fedcba",
+            http_path="/sql/protocolv1/o/123456789/clusters/1234-567890-abc123",
+            catalog="hive_metastore"
+        )
+        
+        with patch('weiser.drivers.base.create_engine') as mock_create_engine:
+            mock_engine = Mock()
+            mock_create_engine.return_value = mock_engine
+            
+            driver = DatabricksDriver(datasource)
+            
+            assert driver.data_source == datasource
+            # Verify engine was called
+            mock_create_engine.assert_called_once()
+
+    def test_databricks_driver_initialization_with_uri(self):
+        """Test DatabricksDriver initialization with pre-configured URI."""
+        datasource = Datasource(
+            name="databricks_db",
+            type=DBType.databricks,
+            uri="databricks://token:dapi123@workspace.databricks.com?http_path=/sql/warehouse/abc&catalog=main&schema=default"
+        )
+        
+        with patch('weiser.drivers.base.create_engine') as mock_create_engine:
+            mock_engine = Mock()
+            mock_create_engine.return_value = mock_engine
+            
+            driver = DatabricksDriver(datasource)
+            
+            assert driver.data_source == datasource
+            # Check that create_engine was called with the provided URI
+            mock_create_engine.assert_called_once()
+
+    def test_databricks_driver_missing_host_error(self):
+        """Test DatabricksDriver raises error when host is missing."""
+        datasource = Datasource(
+            name="databricks_db",
+            type=DBType.databricks,
+            access_token="dapi123456789abcdef",
+            http_path="/sql/1.0/warehouses/abc123def456"
+        )
+        
+        with pytest.raises(ValueError, match="Databricks workspace hostname is required"):
+            DatabricksDriver(datasource)
+
+    def test_databricks_driver_missing_access_token_error(self):
+        """Test DatabricksDriver raises error when access token is missing."""
+        datasource = Datasource(
+            name="databricks_db",
+            type=DBType.databricks,
+            host="workspace-123.cloud.databricks.com",
+            http_path="/sql/1.0/warehouses/abc123def456"
+        )
+        
+        with pytest.raises(ValueError, match="Databricks access token is required"):
+            DatabricksDriver(datasource)
+
+    def test_databricks_driver_missing_http_path_error(self):
+        """Test DatabricksDriver raises error when HTTP path is missing."""
+        datasource = Datasource(
+            name="databricks_db",
+            type=DBType.databricks,
+            host="workspace-123.cloud.databricks.com",
+            access_token="dapi123456789abcdef"
+        )
+        
+        with pytest.raises(ValueError, match="Databricks HTTP path .* is required"):
+            DatabricksDriver(datasource)
+
+    @patch('weiser.drivers.base.create_engine')
+    def test_databricks_execute_query_success(self, mock_create_engine):
+        """Test successful query execution with Databricks driver."""
+        datasource = Datasource(
+            name="databricks_db",
+            type=DBType.databricks,
+            host="workspace-123.cloud.databricks.com",
+            access_token="dapi123456789abcdef",
+            http_path="/sql/1.0/warehouses/abc123def456"
+        )
+        
+        # Setup mocks
+        mock_engine = Mock()
+        mock_connection = Mock()
+        mock_result = [(100,), (200,)]
+        
+        mock_create_engine.return_value = mock_engine
+        
+        # Properly mock the context manager
+        context_manager = MagicMock()
+        context_manager.__enter__ = Mock(return_value=mock_connection)
+        context_manager.__exit__ = Mock(return_value=None)
+        mock_engine.connect.return_value = context_manager
+        
+        mock_connection.execute.return_value = mock_result
+        
+        driver = DatabricksDriver(datasource)
         
         # Create a mock query
         mock_query = Mock()

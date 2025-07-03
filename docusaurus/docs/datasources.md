@@ -12,7 +12,7 @@ Currently supported datasources:
 | **Snowflake**  | `snowflake`  | ✅ Fully Supported | Cloud Data Warehouse             |
 | **Cube.js**    | `cube`       | ✅ Fully Supported | Semantic Layer, Business Metrics |
 | **MySQL**      | `mysql`      | 📋 Planned         | OLTP, Web Applications           |
-| **Databricks** | `databricks` | 🚧 Coming Soon     | Cloud Data Warehouse             |
+| **Databricks** | `databricks` | ✅ Fully Supported | Cloud Data Warehouse             |
 | **BigQuery**   | `bigquery`   | 📋 Planned         | Cloud Data Warehouse             |
 | **Redshift**   | `redshift`   | 📋 Planned         | Cloud Data Warehouse             |
 | **Athena**     | `athena`     | 📋 Planned         | Cloud Data Warehouse             |
@@ -414,6 +414,230 @@ datasources:
   dataset: |
     SELECT * FROM large_table 
     SAMPLE (1000 ROWS)  -- Snowflake sampling
+  type: row_count
+  condition: eq
+  threshold: 1000
+```
+
+## Databricks
+
+Databricks is a unified data analytics platform that supports all Weiser check types. The Databricks connector provides native support for both SQL warehouses and compute clusters with Unity Catalog integration.
+
+### Configuration
+
+#### Basic Connection (SQL Warehouse)
+
+```yaml
+datasources:
+  - name: databricks_prod
+    type: databricks
+    host: workspace-123.cloud.databricks.com
+    access_token: dapi123456789abcdef
+    http_path: /sql/1.0/warehouses/abc123def456
+    catalog: main
+    schema_name: default
+```
+
+#### Cluster Connection
+
+```yaml
+datasources:
+  - name: databricks_cluster
+    type: databricks
+    host: workspace-456.cloud.databricks.com
+    access_token: dapi987654321fedcba
+    http_path: /sql/protocolv1/o/123456789/clusters/1234-567890-abc123
+    catalog: hive_metastore
+    schema_name: public
+```
+
+#### Environment Variables (Recommended)
+
+```yaml
+datasources:
+  - name: databricks_prod
+    type: databricks
+    host: {{DATABRICKS_HOST}}
+    access_token: {{DATABRICKS_ACCESS_TOKEN}}
+    http_path: {{DATABRICKS_HTTP_PATH}}
+    catalog: {{DATABRICKS_CATALOG}}
+    schema_name: {{DATABRICKS_SCHEMA}}
+```
+
+### Connection Parameters
+
+| Parameter      | Required | Default | Description                                                |
+| -------------- | -------- | ------- | ---------------------------------------------------------- |
+| `name`         | Yes      | -       | Unique datasource identifier                               |
+| `type`         | Yes      | -       | Must be `databricks`                                       |
+| `host`         | Yes\*    | -       | Databricks workspace hostname (e.g., workspace-123.cloud.databricks.com) |
+| `access_token` | Yes\*    | -       | Databricks personal access token                           |
+| `http_path`    | Yes\*    | -       | HTTP path to SQL warehouse or cluster endpoint            |
+| `catalog`      | No       | -       | Unity Catalog name (e.g., main, hive_metastore)          |
+| `schema_name`  | No       | -       | Default schema to use                                      |
+| `uri`          | Yes\*    | -       | Complete connection URI (alternative to individual params) |
+
+\*Either individual parameters OR uri is required
+
+### Setup Requirements
+
+#### 1. Databricks Access Token
+
+Create a personal access token in your Databricks workspace:
+
+1. Go to User Settings > Developer > Access tokens
+2. Generate new token with appropriate permissions
+3. Copy the token value (starts with `dapi`)
+
+#### 2. SQL Warehouse or Cluster Setup
+
+**For SQL Warehouses (Recommended):**
+```sql
+-- Get HTTP path from SQL Warehouses page
+-- Format: /sql/1.0/warehouses/{warehouse-id}
+```
+
+**For Compute Clusters:**
+```sql
+-- Get HTTP path from Compute page
+-- Format: /sql/protocolv1/o/{org-id}/clusters/{cluster-id}
+```
+
+#### 3. Unity Catalog Setup (Optional)
+
+```sql
+-- Create catalog for data quality
+CREATE CATALOG data_quality;
+
+-- Grant permissions
+GRANT USE CATALOG ON data_quality TO `weiser@company.com`;
+GRANT USE SCHEMA ON data_quality.default TO `weiser@company.com`;
+GRANT SELECT ON data_quality.default.* TO `weiser@company.com`;
+```
+
+### Supported Features
+
+| Feature                   | Databricks Support |
+| ------------------------- | ------------------- |
+| **Row Count Checks**      | ✅ Full Support     |
+| **Numeric Checks**        | ✅ Full Support     |
+| **Sum/Min/Max Checks**    | ✅ Full Support     |
+| **Not Empty Checks**      | ✅ Full Support     |
+| **Anomaly Detection**     | ✅ Full Support     |
+| **Custom SQL**            | ✅ Full Support     |
+| **Time Dimensions**       | ✅ Full Support     |
+| **Dimensions/Grouping**   | ✅ Full Support     |
+| **Complex Filters**       | ✅ Full Support     |
+| **Window Functions**      | ✅ Full Support     |
+| **Statistical Functions** | ✅ Full Support     |
+| **Unity Catalog**         | ✅ Full Support     |
+
+### Databricks-Specific Examples
+
+#### Using Unity Catalog
+
+```yaml
+- name: unity_catalog_check
+  dataset: main.sales.orders
+  type: row_count
+  condition: gt
+  threshold: 1000
+  filter: order_date >= current_date() - interval 7 days
+```
+
+#### Delta Lake Time Travel
+
+```yaml
+- name: historical_comparison
+  dataset: |
+    SELECT COUNT(*) as current_count
+    FROM delta.`/mnt/delta/orders`
+    VERSION AS OF 123
+  type: numeric
+  measure: current_count
+  condition: gt
+  threshold: 5000
+```
+
+#### Using Databricks SQL Functions
+
+```yaml
+- name: data_freshness_check
+  dataset: events
+  type: numeric
+  measure: datediff(current_timestamp(), max(event_timestamp))
+  condition: lt
+  threshold: 24
+  filter: event_date = current_date()
+```
+
+### Performance Optimization
+
+#### Warehouse Sizing
+
+Choose appropriate warehouse size based on check complexity:
+
+- **2X-Small/X-Small**: Simple row counts and basic aggregations
+- **Small/Medium**: Complex joins and window functions
+- **Large/X-Large**: Large-scale statistical analysis and heavy workloads
+
+#### Query Optimization
+
+```sql
+-- Use Delta Lake optimization features
+OPTIMIZE delta.`/mnt/delta/orders` ZORDER BY (order_date);
+
+-- Create materialized views for complex aggregations
+CREATE MATERIALIZED VIEW daily_order_metrics AS
+SELECT 
+    date_trunc('day', order_date) as order_date,
+    COUNT(*) as order_count,
+    SUM(amount) as total_amount
+FROM orders
+GROUP BY 1;
+```
+
+### Common Issues & Solutions
+
+#### Authentication Errors
+
+```yaml
+# Ensure access token has proper permissions
+datasources:
+  - name: databricks_prod
+    type: databricks
+    host: workspace-123.cloud.databricks.com
+    access_token: dapi123456789abcdef  # Must start with 'dapi'
+    http_path: /sql/1.0/warehouses/abc123def456
+```
+
+#### Warehouse Auto-Suspend
+
+```yaml
+# Warehouses auto-suspend when idle
+# They automatically resume when queries are executed
+# Consider warehouse settings in Databricks UI for cost optimization
+```
+
+#### Unity Catalog Access
+
+```yaml
+# Specify full three-part names for Unity Catalog tables
+- name: unity_catalog_check
+  dataset: catalog_name.schema_name.table_name
+  type: row_count
+  condition: gt
+  threshold: 100
+```
+
+#### Large Result Sets
+
+```yaml
+# Use LIMIT for sampling large tables
+- name: sample_data_check
+  dataset: |
+    SELECT * FROM large_table 
+    TABLESAMPLE (1000 ROWS)  -- Databricks sampling
   type: row_count
   condition: eq
   threshold: 1000

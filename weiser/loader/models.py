@@ -27,6 +27,7 @@ class DBType(str, Enum):
     mysql = "mysql"
     cube = "cube"
     snowflake = "snowflake"
+    databricks = "databricks"
 
 
 class MetricStoreType(str, Enum):
@@ -114,6 +115,10 @@ class Datasource(BaseModel):
     warehouse: Optional[str] = None
     role: Optional[str] = None
     schema_name: Optional[str] = None
+    # Databricks-specific fields
+    access_token: Optional[SecretStr] = None
+    http_path: Optional[str] = None
+    catalog: Optional[str] = None
 
     class Config:
         use_enum_values = True

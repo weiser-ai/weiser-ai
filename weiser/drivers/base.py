@@ -35,6 +35,7 @@ DIALECT_TYPE_MAP = {
     "mysql": MySQL,
     "oracle": Oracle,
     "snowflake": Snowflake,
+    "databricks": Databricks,
     "bigquery": BigQuery,
     "cube": Postgres,
 }

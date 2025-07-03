@@ -1,0 +1,25 @@
+version: 1
+datasources:
+  - name: default
+    type: databricks
+    access_token: {{DATABRICKS_ACCESS_TOKEN}}
+    http_path: {{DATABRICKS_HTTP_PATH}}
+    host: {{DATABRICKS_HOST}}
+    catalog: {{DATABRICKS_CATALOG}}
+    schema_name: {{DATABRICKS_SCHEMA}}
+
+
+
+connections:
+  - name: metricstore
+    type: metricstore
+    db_type: duckdb
+    db_name: "./metricstore_sf.db"
+
+checks:
+  - name: test row_count
+    dataset:
+      - lineitem
+    type: row_count
+    condition: gt
+    threshold: 0
