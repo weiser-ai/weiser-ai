@@ -5,6 +5,7 @@ from pydantic import ValidationError
 
 from weiser.drivers.base import BaseDriver, DIALECT_TYPE_MAP
 from weiser.drivers import DriverFactory
+from weiser.drivers.mysql import MySQLDriver
 from weiser.drivers.snowflake import SnowflakeDriver
 from weiser.drivers.databricks import DatabricksDriver
 from weiser.drivers.bigquery import BigQueryDriver
@@ -188,8 +189,8 @@ class TestDriverFactory:
             assert hasattr(driver, "engine")
             assert hasattr(driver, "data_source")
 
-    def test_create_driver_fallback_to_base(self):
-        """Test factory falls back to BaseDriver for unsupported types."""
+    def test_create_mysql_driver(self):
+        """Test factory creates MySQL driver."""
         datasource = MySQLDatasource(
             name="mysql_db",
             host="localhost",
@@ -205,11 +206,11 @@ class TestDriverFactory:
 
             driver = DriverFactory.create_driver(datasource)
 
-            assert isinstance(driver, BaseDriver)
-            # Should have called create_engine with mysql URL
+            assert isinstance(driver, MySQLDriver)
+            # Should have called create_engine with mysql+pymysql URL
             mock_create_engine.assert_called_once()
             call_args = mock_create_engine.call_args[0][0]
-            assert "mysql://" in str(call_args)
+            assert "mysql+pymysql://" in str(call_args)
 
     def test_create_snowflake_driver(self):
         """Test factory creates Snowflake driver."""
@@ -273,6 +274,219 @@ class TestDriverFactory:
             assert isinstance(driver, BigQueryDriver)
             # Should have called create_engine with BigQuery URL
             mock_create_engine.assert_called_once()
+
+
+class TestMySQLDriver:
+    """Test MySQLDriver functionality."""
+
+    def test_mysql_driver_initialization_with_components(self):
+        """Test MySQLDriver initialization with individual components."""
+        datasource = MySQLDatasource(
+            name="mysql_db",
+            host="localhost",
+            port=3306,
+            db_name="test_database",
+            user="test_user",
+            password="test_password",
+        )
+
+        with patch("weiser.drivers.base.create_engine") as mock_create_engine:
+            mock_engine = Mock()
+            mock_create_engine.return_value = mock_engine
+
+            driver = MySQLDriver(datasource)
+
+            assert driver.data_source == datasource
+            # Check that create_engine was called with mysql+pymysql URL
+            mock_create_engine.assert_called_once()
+            call_args = mock_create_engine.call_args[0][0]
+            assert "mysql+pymysql://" in str(call_args)
+
+    def test_mysql_driver_initialization_with_default_port(self):
+        """Test MySQLDriver initialization uses default port 3306."""
+        datasource = MySQLDatasource(
+            name="mysql_db",
+            host="localhost",
+            db_name="test_database",
+            user="test_user",
+            password="test_password",
+            # No port specified, should default to 3306
+        )
+
+        with patch("weiser.drivers.base.create_engine") as mock_create_engine:
+            mock_engine = Mock()
+            mock_create_engine.return_value = mock_engine
+
+            driver = MySQLDriver(datasource)
+
+            assert driver.data_source == datasource
+            # Verify default port 3306 is used
+            mock_create_engine.assert_called_once()
+            call_args = mock_create_engine.call_args[0][0]
+            assert ":3306/" in str(call_args)
+
+    def test_mysql_driver_initialization_with_custom_port(self):
+        """Test MySQLDriver initialization with custom port."""
+        datasource = MySQLDatasource(
+            name="mysql_db",
+            host="localhost",
+            port=3307,
+            db_name="test_database",
+            user="test_user",
+            password="test_password",
+        )
+
+        with patch("weiser.drivers.base.create_engine") as mock_create_engine:
+            mock_engine = Mock()
+            mock_create_engine.return_value = mock_engine
+
+            driver = MySQLDriver(datasource)
+
+            assert driver.data_source == datasource
+            # Verify custom port is used
+            mock_create_engine.assert_called_once()
+            call_args = mock_create_engine.call_args[0][0]
+            assert ":3307/" in str(call_args)
+
+    def test_mysql_driver_initialization_with_uri(self):
+        """Test MySQLDriver initialization with pre-configured URI."""
+        datasource = MySQLDatasource(
+            name="mysql_db",
+            uri="mysql+pymysql://user:pass@localhost:3306/testdb",
+        )
+
+        with patch("weiser.drivers.base.create_engine") as mock_create_engine:
+            mock_engine = Mock()
+            mock_create_engine.return_value = mock_engine
+
+            driver = MySQLDriver(datasource)
+
+            assert driver.data_source == datasource
+            # Check that create_engine was called with the provided URI
+            mock_create_engine.assert_called_once()
+            call_args = mock_create_engine.call_args[0][0]
+            assert str(call_args) == "mysql+pymysql://user:pass@localhost:3306/testdb"
+
+    def test_mysql_driver_initialization_without_password(self):
+        """Test MySQLDriver initialization without password."""
+        datasource = MySQLDatasource(
+            name="mysql_db",
+            host="localhost",
+            port=3306,
+            db_name="test_database",
+            user="test_user",
+            # No password provided
+        )
+
+        with patch("weiser.drivers.base.create_engine") as mock_create_engine:
+            mock_engine = Mock()
+            mock_create_engine.return_value = mock_engine
+
+            driver = MySQLDriver(datasource)
+
+            assert driver.data_source == datasource
+            # Check that create_engine was called with URL without password
+            mock_create_engine.assert_called_once()
+            call_args = mock_create_engine.call_args[0][0]
+            url_str = str(call_args)
+            assert "mysql+pymysql://" in url_str
+            assert "test_user@" in url_str
+            # Should not have password part
+            assert ":@" not in url_str  # No password before @
+
+    def test_mysql_driver_missing_required_fields_error(self):
+        """Test MySQLDriver raises error when required fields are missing."""
+        # This test will fail at model validation level since name is required
+        with pytest.raises(ValidationError, match="Field required"):
+            MySQLDatasource(
+                host="localhost",
+                port=3306,
+                db_name="test_database",
+                user="test_user",
+                # Missing required name field
+            )
+
+    @patch("weiser.drivers.base.create_engine")
+    def test_mysql_execute_query_success(self, mock_create_engine):
+        """Test successful query execution with MySQL driver."""
+        datasource = MySQLDatasource(
+            name="mysql_db",
+            host="localhost",
+            port=3306,
+            db_name="test_db",
+            user="user",
+            password="pass",
+        )
+
+        # Setup mocks
+        mock_engine = Mock()
+        mock_connection = Mock()
+        mock_result = [(100,), (200,)]
+
+        mock_create_engine.return_value = mock_engine
+
+        # Properly mock the context manager
+        context_manager = MagicMock()
+        context_manager.__enter__ = Mock(return_value=mock_connection)
+        context_manager.__exit__ = Mock(return_value=None)
+        mock_engine.connect.return_value = context_manager
+
+        mock_connection.execute.return_value = mock_result
+
+        driver = MySQLDriver(datasource)
+
+        # Create a mock query
+        mock_query = Mock()
+        mock_query.sql.return_value = "SELECT COUNT(*) FROM orders"
+
+        mock_check = Mock()
+        mock_check.model_dump.return_value = {"name": "test_check"}
+
+        result = driver.execute_query(mock_query, mock_check, verbose=False)
+
+        assert result == mock_result
+        mock_connection.execute.assert_called_once()
+
+    @patch("weiser.drivers.base.create_engine")
+    def test_mysql_execute_query_with_verbose(self, mock_create_engine):
+        """Test MySQL query execution with verbose logging."""
+        datasource = MySQLDatasource(
+            name="mysql_db",
+            host="localhost",
+            port=3306,
+            db_name="test_db",
+            user="user",
+            password="pass",
+        )
+
+        # Setup mocks
+        mock_engine = Mock()
+        mock_connection = Mock()
+        mock_result = [(50,)]
+
+        mock_create_engine.return_value = mock_engine
+
+        # Properly mock the context manager
+        context_manager = MagicMock()
+        context_manager.__enter__ = Mock(return_value=mock_connection)
+        context_manager.__exit__ = Mock(return_value=None)
+        mock_engine.connect.return_value = context_manager
+
+        mock_connection.execute.return_value = mock_result
+
+        driver = MySQLDriver(datasource)
+
+        # Create a mock query
+        mock_query = Mock()
+        mock_query.sql.return_value = "SELECT COUNT(*) FROM products WHERE price > 100"
+
+        mock_check = Mock()
+        mock_check.model_dump.return_value = {"name": "test_check"}
+
+        result = driver.execute_query(mock_query, mock_check, verbose=True)
+
+        assert result == mock_result
+        mock_connection.execute.assert_called_once()
 
 
 class TestSnowflakeDriver:

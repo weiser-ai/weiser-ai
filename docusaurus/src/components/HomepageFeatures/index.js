@@ -30,9 +30,9 @@ const FeatureList = [
     Img: require("@site/static/img/weiser-enterprise.png").default,
     description: (
       <>
-        From startup analytics to enterprise data warehouses. Supports
-        PostgreSQL, Databricks, Snowflake, BigQuery, Cube, and scales to handle millions
-        of records with advanced statistical analysis and anomaly detection.
+        Supports PostgreSQL, MySQL, Databricks, Snowflake, BigQuery, Cube, and
+        scales to handle millions of records with advanced statistical analysis
+        and anomaly detection.
       </>
     ),
   },

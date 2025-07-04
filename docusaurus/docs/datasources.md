@@ -9,11 +9,11 @@ Currently supported datasources:
 | Datasource     | Type         | Status             | Use Cases                        |
 | -------------- | ------------ | ------------------ | -------------------------------- |
 | **PostgreSQL** | `postgresql` | ✅ Fully Supported | OLTP, Analytics, Data Warehouses |
+| **MySQL**      | `mysql`      | ✅ Fully Supported | OLTP, Web Applications           |
 | **Snowflake**  | `snowflake`  | ✅ Fully Supported | Cloud Data Warehouse             |
-| **Cube.js**    | `cube`       | ✅ Fully Supported | Semantic Layer, Business Metrics |
-| **MySQL**      | `mysql`      | 📋 Planned         | OLTP, Web Applications           |
 | **Databricks** | `databricks` | ✅ Fully Supported | Cloud Data Warehouse             |
 | **BigQuery**   | `bigquery`   | ✅ Fully Supported | Cloud Data Warehouse             |
+| **Cube.js**    | `cube`       | ✅ Fully Supported | Semantic Layer, Business Metrics |
 | **Redshift**   | `redshift`   | 📋 Planned         | Cloud Data Warehouse             |
 | **Athena**     | `athena`     | 📋 Planned         | Cloud Data Warehouse             |
 | **Trino**      | `trino`      | 📋 Planned         | Distributed Data Warehouse       |
@@ -190,6 +190,272 @@ datasources:
   type: row_count
   condition: gt
   threshold: 50000
+```
+
+## MySQL
+
+MySQL is a popular open-source relational database that supports all Weiser check types. The MySQL connector uses the PyMySQL driver for reliable connectivity and full feature compatibility.
+
+### Configuration
+
+#### Basic Connection
+
+```yaml
+datasources:
+  - name: mysql_prod
+    type: mysql
+    host: localhost
+    port: 3306
+    db_name: production
+    user: weiser_user
+    password: secure_password
+```
+
+#### Connection URI
+
+```yaml
+datasources:
+  - name: mysql_warehouse
+    type: mysql
+    uri: mysql+pymysql://user:password@host:3306/database
+```
+
+#### Environment Variables (Recommended)
+
+```yaml
+datasources:
+  - name: mysql_prod
+    type: mysql
+    host: {{MYSQL_HOST}}
+    port: {{MYSQL_PORT}}
+    db_name: {{MYSQL_DB}}
+    user: {{MYSQL_USER}}
+    password: {{MYSQL_PASSWORD}}
+```
+
+### Connection Parameters
+
+| Parameter  | Required | Default | Description                                                |
+| ---------- | -------- | ------- | ---------------------------------------------------------- |
+| `name`     | Yes      | -       | Unique datasource identifier                               |
+| `type`     | Yes      | -       | Must be `mysql`                                            |
+| `host`     | Yes\*    | -       | Database server hostname                                   |
+| `port`     | No       | 3306    | Database server port                                       |
+| `db_name`  | Yes\*    | -       | Database name                                              |
+| `user`     | Yes\*    | -       | Database username                                          |
+| `password` | No       | -       | Database password                                          |
+| `uri`      | Yes\*    | -       | Complete connection URI (alternative to individual params) |
+
+\*Either individual parameters OR uri is required
+
+### Setup Requirements
+
+#### 1. Database User Permissions
+
+```sql
+-- Create dedicated user for Weiser
+CREATE USER 'weiser_user'@'%' IDENTIFIED BY 'secure_password';
+
+-- Grant read permissions
+GRANT SELECT ON production.* TO 'weiser_user'@'%';
+
+-- Grant connection permissions
+GRANT USAGE ON *.* TO 'weiser_user'@'%';
+
+-- Apply changes
+FLUSH PRIVILEGES;
+```
+
+#### 2. Network Access
+
+Ensure your MySQL server allows connections from Weiser:
+
+```bash
+# Test connectivity
+mysql -h your-host -u weiser_user -p production -e "SELECT 1;"
+```
+
+#### 3. SSL Configuration (Recommended)
+
+```yaml
+datasources:
+  - name: mysql_prod
+    type: mysql
+    uri: mysql+pymysql://user:password@host:3306/database?ssl_ca=/path/to/ca.pem&ssl_verify_identity=true
+```
+
+### Supported Features
+
+| Feature                   | MySQL Support  |
+| ------------------------- | -------------- |
+| **Row Count Checks**      | ✅ Full Support |
+| **Numeric Checks**        | ✅ Full Support |
+| **Sum/Min/Max Checks**    | ✅ Full Support |
+| **Not Empty Checks**      | ✅ Full Support |
+| **Anomaly Detection**     | ✅ Full Support |
+| **Custom SQL**            | ✅ Full Support |
+| **Time Dimensions**       | ✅ Full Support |
+| **Dimensions/Grouping**   | ✅ Full Support |
+| **Complex Filters**       | ✅ Full Support |
+| **Window Functions**      | ✅ Full Support |
+| **Statistical Functions** | ✅ Full Support |
+
+### MySQL-Specific Examples
+
+#### Using MySQL Date Functions
+
+```yaml
+- name: recent_data_check
+  dataset: orders
+  type: row_count
+  condition: gt
+  threshold: 100
+  filter: created_at >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)
+```
+
+#### Using MySQL String Functions
+
+```yaml
+- name: email_format_check
+  dataset: customers
+  type: row_count
+  condition: eq
+  threshold: 0
+  filter: email NOT REGEXP '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$'
+```
+
+#### JSON Data Validation
+
+```yaml
+- name: json_data_check
+  dataset: user_preferences
+  type: row_count
+  condition: gt
+  threshold: 1000
+  filter: JSON_VALID(preferences_json) = 1
+```
+
+### Performance Optimization
+
+#### Indexes
+
+Ensure proper indexes for check performance:
+
+```sql
+-- Index for time-based checks
+CREATE INDEX idx_orders_created_at ON orders(created_at);
+
+-- Index for filtered checks
+CREATE INDEX idx_orders_status ON orders(status);
+
+-- Composite index for grouped checks
+CREATE INDEX idx_sales_region_date ON sales(region, sale_date);
+```
+
+#### Query Optimization
+
+```sql
+-- Use appropriate storage engines
+ALTER TABLE large_table ENGINE=InnoDB;
+
+-- Enable query cache for repeated checks
+SET GLOBAL query_cache_type = ON;
+SET GLOBAL query_cache_size = 268435456;  -- 256MB
+```
+
+### Common Issues & Solutions
+
+#### Connection Timeout
+
+```yaml
+# Increase timeout for large queries
+datasources:
+  - name: mysql_prod
+    type: mysql
+    uri: mysql+pymysql://user:password@host:3306/database?connect_timeout=30&read_timeout=60
+```
+
+#### SSL Certificate Issues
+
+```yaml
+# Disable SSL (not recommended for production)
+datasources:
+  - name: mysql_dev
+    type: mysql
+    uri: mysql+pymysql://user:password@host:3306/database?ssl_disabled=true
+```
+
+#### Character Set Issues
+
+```yaml
+# Specify character set
+datasources:
+  - name: mysql_prod
+    type: mysql
+    uri: mysql+pymysql://user:password@host:3306/database?charset=utf8mb4
+```
+
+#### Large Result Sets
+
+```yaml
+# Use LIMIT in checks for large tables
+- name: sample_data_check
+  dataset: |
+    SELECT * FROM large_table 
+    ORDER BY created_at DESC 
+    LIMIT 100000
+  type: row_count
+  condition: gt
+  threshold: 50000
+```
+
+### MySQL Version Compatibility
+
+Weiser supports MySQL versions:
+
+- **MySQL 5.7+**: Full support for all features
+- **MySQL 8.0+**: Enhanced support with JSON functions and window functions
+- **MariaDB 10.3+**: Compatible with MySQL features
+
+### Cloud MySQL Services
+
+#### Amazon RDS for MySQL
+
+```yaml
+datasources:
+  - name: mysql_rds
+    type: mysql
+    host: myinstance.123456789012.us-east-1.rds.amazonaws.com
+    port: 3306
+    db_name: production
+    user: {{RDS_USERNAME}}
+    password: {{RDS_PASSWORD}}
+```
+
+#### Google Cloud SQL for MySQL
+
+```yaml
+datasources:
+  - name: mysql_cloudsql
+    type: mysql
+    host: 10.1.2.3  # Private IP or public IP
+    port: 3306
+    db_name: production
+    user: {{CLOUDSQL_USERNAME}}
+    password: {{CLOUDSQL_PASSWORD}}
+```
+
+#### Azure Database for MySQL
+
+```yaml
+datasources:
+  - name: mysql_azure
+    type: mysql
+    host: myserver.mysql.database.azure.com
+    port: 3306
+    db_name: production
+    user: {{AZURE_MYSQL_USERNAME}}
+    password: {{AZURE_MYSQL_PASSWORD}}
 ```
 
 ## Snowflake

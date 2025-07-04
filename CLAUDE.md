@@ -98,6 +98,7 @@ The project uses PDM for dependency management. Key dependencies include:
 - `streamlit`: Dashboard framework
 - `snowflake-sqlalchemy`: Snowflake connector
 - `psycopg2`: PostgreSQL connector
+- `pymysql`: MySQL connector
 - `duckdb`: Local analytics database
 
 ## Configuration Structure
@@ -126,6 +127,14 @@ datasources:
     warehouse: COMPUTE_WH
     role: ANALYST_ROLE
     schema_name: PUBLIC
+
+  - name: mysql_prod
+    type: mysql
+    host: mysql.example.com
+    port: 3306
+    db_name: production_db
+    user: {{ MYSQL_USER }}
+    password: {{ MYSQL_PASSWORD }}
 
 checks:
   - name: test row_count
@@ -160,10 +169,12 @@ connections:
 ### Supported Databases
 
 - **PostgreSQL**: Full support for all check types
+- **MySQL**: Full support for all check types with PyMySQL driver
 - **Snowflake**: Full support with warehouse, role, and schema configuration
+- **Databricks**: Full support with SQL warehouse integration
+- **BigQuery**: Full support with GCP integration
 - **Cube.js**: Semantic layer integration (PostgreSQL-compatible)
 - **DuckDB**: For metric storage and local development
-- **MySQL**: Basic support (planned for full support)
 
 ## Key Implementation Details
 
