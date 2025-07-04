@@ -1,9 +1,8 @@
-from datetime import datetime
 from decimal import Decimal
 from enum import Enum, IntEnum
-from typing import Optional, Union, List
+from typing import Optional, Union, List, Annotated, Literal
 
-from pydantic import BaseModel, SecretStr
+from pydantic import BaseModel, SecretStr, Field
 
 
 class Version(IntEnum):
@@ -28,6 +27,7 @@ class DBType(str, Enum):
     cube = "cube"
     snowflake = "snowflake"
     databricks = "databricks"
+    bigquery = "bigquery"
 
 
 class MetricStoreType(str, Enum):
@@ -100,28 +100,86 @@ class Check(BaseModel):
         use_enum_values = True
 
 
+# Base datasource model with common fields
 class Datasource(BaseModel):
     name: str
     uri: Optional[str] = None
     # Type must be provided even if URI is used.
     type: Optional[DBType] = DBType.postgresql
+
+    class Config:
+        use_enum_values = True
+
+
+# Database-specific datasource models
+class PostgreSQLDatasource(Datasource):
+    type: Literal["postgresql"] = "postgresql"
     user: Optional[str] = None
     host: Optional[str] = None
     db_name: Optional[str] = None
     password: Optional[SecretStr] = None
-    port: Optional[int] = None
-    # Snowflake-specific fields
-    account: Optional[str] = None
+    port: Optional[int] = 5432
+
+
+class MySQLDatasource(Datasource):
+    type: Literal["mysql"] = "mysql"
+    user: Optional[str] = None
+    host: Optional[str] = None
+    db_name: Optional[str] = None
+    password: Optional[SecretStr] = None
+    port: Optional[int] = 3306
+
+
+class CubeDatasource(Datasource):
+    type: Literal["cube"] = "cube"
+    user: Optional[str] = None
+    host: Optional[str] = None
+    db_name: Optional[str] = None
+    password: Optional[SecretStr] = None
+    port: Optional[int] = 5432
+
+
+class SnowflakeDatasource(Datasource):
+    type: Literal["snowflake"] = "snowflake"
+    user: Optional[str] = None
+    password: Optional[SecretStr] = None
+    account: str  # Required for Snowflake
     warehouse: Optional[str] = None
     role: Optional[str] = None
+    db_name: Optional[str] = None
     schema_name: Optional[str] = None
-    # Databricks-specific fields
-    access_token: Optional[SecretStr] = None
-    http_path: Optional[str] = None
-    catalog: Optional[str] = None
 
-    class Config:
-        use_enum_values = True
+
+class DatabricksDatasource(Datasource):
+    type: Literal["databricks"] = "databricks"
+    host: str  # Required for Databricks
+    http_path: str  # Required for Databricks
+    access_token: SecretStr  # Required for Databricks
+    catalog: Optional[str] = None
+    schema_name: Optional[str] = None
+
+
+class BigQueryDatasource(Datasource):
+    type: Literal["bigquery"] = "bigquery"
+    project_id: str  # Required for BigQuery
+    dataset_id: Optional[str] = None
+    db_name: Optional[str] = None  # Alternative to dataset_id
+    credentials_path: Optional[str] = None
+    location: Optional[str] = "US"
+
+
+# Discriminated union type for all datasource types
+AnyDatasource = Annotated[
+    Union[
+        PostgreSQLDatasource,
+        MySQLDatasource,
+        CubeDatasource,
+        SnowflakeDatasource,
+        DatabricksDatasource,
+        BigQueryDatasource,
+    ],
+    Field(discriminator="type"),
+]
 
 
 class MetricStore(BaseModel):
@@ -148,7 +206,7 @@ class MetricStore(BaseModel):
 class BaseConfig(BaseModel):
     version: Optional[Version] = Version.v1
     checks: List[Check]
-    datasources: List[Datasource]
+    datasources: List[AnyDatasource]
     includes: Optional[List[str]] = None
     connections: Optional[List[MetricStore]] = [MetricStore()]
     slack_url: Optional[str] = None

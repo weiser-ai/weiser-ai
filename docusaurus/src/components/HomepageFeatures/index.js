@@ -31,7 +31,7 @@ const FeatureList = [
     description: (
       <>
         From startup analytics to enterprise data warehouses. Supports
-        PostgreSQL, Databricks, Snowflake, Cube, and scales to handle millions
+        PostgreSQL, Databricks, Snowflake, BigQuery, Cube, and scales to handle millions
         of records with advanced statistical analysis and anomaly detection.
       </>
     ),

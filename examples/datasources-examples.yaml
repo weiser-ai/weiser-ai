@@ -1,0 +1,128 @@
+version: 1
+
+# Example datasource configurations for each supported database type
+datasources:
+  # PostgreSQL datasource (default type)
+  - name: postgres_prod
+    type: postgresql
+    host: localhost
+    port: 5432
+    db_name: production_db
+    user: postgres_user
+    password: "{{POSTGRES_PASSWORD}}"
+
+  # MySQL datasource
+  - name: mysql_analytics
+    type: mysql
+    host: mysql.example.com
+    port: 3306
+    db_name: analytics_db
+    user: mysql_user
+    password: "{{MYSQL_PASSWORD}}"
+
+  # Cube.js datasource (uses PostgreSQL protocol)
+  - name: cube_semantic_layer
+    type: cube
+    host: cube.example.com
+    port: 5432
+    db_name: cube_schema
+    user: cube_user
+    password: "{{CUBE_PASSWORD}}"
+
+  # Snowflake datasource (requires account)
+  - name: snowflake_warehouse
+    type: snowflake
+    account: "{{SNOWFLAKE_ACCOUNT}}"  # e.g., "xy12345.us-east-1"
+    user: "{{SNOWFLAKE_USER}}"
+    password: "{{SNOWFLAKE_PASSWORD}}"
+    warehouse: COMPUTE_WH
+    role: ANALYST_ROLE
+    db_name: PRODUCTION_DB
+    schema_name: PUBLIC
+
+  # Databricks datasource (requires host, http_path, and access_token)
+  - name: databricks_lakehouse
+    type: databricks
+    host: "{{DATABRICKS_HOST}}"  # e.g., "dbc-12345678-90ab.cloud.databricks.com"
+    http_path: "{{DATABRICKS_HTTP_PATH}}"  # e.g., "/sql/1.0/warehouses/abc123def456"
+    access_token: "{{DATABRICKS_ACCESS_TOKEN}}"
+    catalog: main
+    schema_name: default
+
+  # BigQuery datasource (requires project_id)
+  - name: bigquery_analytics
+    type: bigquery
+    project_id: "{{GCP_PROJECT_ID}}"  # e.g., "my-gcp-project"
+    dataset_id: analytics
+    credentials_path: "{{GOOGLE_APPLICATION_CREDENTIALS}}"  # Optional, can use default credentials
+    location: US
+
+# Example checks using different datasource types
+checks:
+  # PostgreSQL row count check
+  - name: postgres_orders_count
+    dataset: orders
+    datasource: postgres_prod
+    type: row_count
+    condition: gt
+    threshold: 1000
+
+  # MySQL aggregation check
+  - name: mysql_revenue_sum
+    dataset: sales
+    datasource: mysql_analytics
+    type: sum
+    measure: revenue
+    condition: gt
+    threshold: 100000
+
+  # Snowflake check with dimensions
+  - name: snowflake_orders_by_region
+    dataset: orders
+    datasource: snowflake_warehouse
+    type: row_count
+    dimensions:
+      - region
+      - status
+    condition: gt
+    threshold: 10
+
+  # Databricks check with time dimension
+  - name: databricks_daily_events
+    dataset: events
+    datasource: databricks_lakehouse
+    type: row_count
+    time_dimension:
+      name: event_date
+      granularity: day
+    condition: gt
+    threshold: 1000
+
+  # BigQuery check with custom SQL
+  - name: bigquery_user_activity
+    dataset: >
+      SELECT user_id, COUNT(*) as activity_count
+      FROM user_events
+      WHERE event_date >= CURRENT_DATE() - 7
+      GROUP BY user_id
+    datasource: bigquery_analytics
+    type: numeric
+    measure: activity_count
+    condition: gt
+    threshold: 5
+
+  # Cube.js semantic layer check
+  - name: cube_revenue_measure
+    dataset: revenue_cube
+    datasource: cube_semantic_layer
+    type: measure
+    measure: total_revenue
+    condition: gt
+    threshold: 50000
+
+# Metric store configuration
+connections:
+  - name: metricstore
+    type: metricstore
+    db_type: duckdb
+    db_name: metrics.db

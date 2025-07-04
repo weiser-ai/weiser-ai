@@ -4,7 +4,13 @@ from typing import Dict, Any
 from weiser.loader.models import (
     BaseConfig, 
     Check, 
-    Datasource, 
+    Datasource,
+    PostgreSQLDatasource,
+    MySQLDatasource,
+    SnowflakeDatasource,
+    DatabricksDatasource,
+    BigQueryDatasource,
+    CubeDatasource,
     MetricStore,
     CheckType,
     Condition,
@@ -26,6 +32,84 @@ def sample_datasource():
         db_name="test_database",
         user="test_user",
         password="test_password"
+    )
+
+
+@pytest.fixture
+def sample_postgresql_datasource():
+    """Sample PostgreSQL datasource using specific model."""
+    return PostgreSQLDatasource(
+        name="postgres_db",
+        host="localhost",
+        port=5432,
+        db_name="test_database",
+        user="postgres_user",
+        password="postgres_password"
+    )
+
+
+@pytest.fixture
+def sample_mysql_datasource():
+    """Sample MySQL datasource using specific model."""
+    return MySQLDatasource(
+        name="mysql_db",
+        host="mysql.example.com",
+        port=3306,
+        db_name="analytics_db",
+        user="mysql_user",
+        password="mysql_password"
+    )
+
+
+@pytest.fixture
+def sample_snowflake_datasource():
+    """Sample Snowflake datasource using specific model."""
+    return SnowflakeDatasource(
+        name="snowflake_db",
+        account="xy12345.us-east-1",
+        user="snowflake_user",
+        password="snowflake_password",
+        warehouse="COMPUTE_WH",
+        role="ANALYST_ROLE",
+        db_name="PRODUCTION_DB",
+        schema_name="PUBLIC"
+    )
+
+
+@pytest.fixture
+def sample_databricks_datasource():
+    """Sample Databricks datasource using specific model."""
+    return DatabricksDatasource(
+        name="databricks_db",
+        host="dbc-12345678-90ab.cloud.databricks.com",
+        http_path="/sql/1.0/warehouses/abc123def456",
+        access_token="dapi123456789abcdef",
+        catalog="main",
+        schema_name="default"
+    )
+
+
+@pytest.fixture
+def sample_bigquery_datasource():
+    """Sample BigQuery datasource using specific model."""
+    return BigQueryDatasource(
+        name="bigquery_db",
+        project_id="my-gcp-project",
+        dataset_id="analytics",
+        location="US"
+    )
+
+
+@pytest.fixture
+def sample_cube_datasource():
+    """Sample Cube datasource using specific model."""
+    return CubeDatasource(
+        name="cube_db",
+        host="cube.example.com",
+        port=5432,
+        db_name="cube_schema",
+        user="cube_user",
+        password="cube_password"
     )
 
 
@@ -122,11 +206,11 @@ def sample_check_with_filter():
 
 
 @pytest.fixture
-def sample_base_config(sample_datasource, sample_metric_store, sample_row_count_check, sample_numeric_check):
+def sample_base_config(sample_postgresql_datasource, sample_metric_store, sample_row_count_check, sample_numeric_check):
     """Sample base configuration for testing."""
     return BaseConfig(
         checks=[sample_row_count_check, sample_numeric_check],
-        datasources=[sample_datasource],
+        datasources=[sample_postgresql_datasource],
         connections=[sample_metric_store]
     )
 

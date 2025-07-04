@@ -33,6 +33,8 @@ Weiser is a data quality framework designed to ensure data integrity and accurac
    - `base.py`: BaseDriver for database connections using SQLAlchemy
    - `postgres.py`: PostgreSQL-specific driver
    - `snowflake.py`: Snowflake-specific driver with warehouse/role support
+   - `databricks.py`: Databricks-specific driver with warehouse/role support
+   - `bigquery.py`: BigQuery-specific driver with project/dataset support
    - `metric_stores/`: Separate drivers for metric storage (DuckDB, PostgreSQL)
 
 5. **Runner System** (`weiser/runner/`): Orchestrates check execution, manages connections, and handles results
@@ -268,36 +270,6 @@ Tests use extensive mocking to avoid requiring real databases:
 - DuckDB connections are mocked for metric storage
 - S3/boto3 clients are mocked for cloud storage
 - Check execution results are mocked with realistic data
-
-## Recent Updates (v0.1.14)
-
-### Snowflake Support
-
-- **Full Snowflake integration**: Native support for Snowflake data warehouses
-- **Warehouse/role configuration**: Support for Snowflake-specific connection parameters
-- **Schema specification**: Optional schema parameter for multi-schema environments
-- **Error validation**: Proper validation of required Snowflake connection parameters
-
-### Enhanced Check Types
-
-- **NotEmpty checks**: Count-based NULL value detection for dimensions
-- **NotEmptyPct checks**: Percentage-based NULL value detection with inheritance
-- **Template method pattern**: Extensible architecture for new check types
-- **Comprehensive testing**: Full test coverage for all check variations
-
-### Improved Metric Store
-
-- **Conditional S3 operations**: Only attempts S3 when properly configured
-- **Local-first development**: Works without S3 for local development
-- **Safe initialization**: Graceful handling of missing S3 data
-- **Better error handling**: Prevents crashes when S3 configuration is incomplete
-
-### Documentation Enhancements
-
-- **Snowflake datasource guide**: Complete setup and configuration documentation
-- **GA4 analytics**: Website tracking for usage insights
-- **Updated examples**: Snowflake configuration examples
-- **Performance optimization**: Best practices for different warehouse sizes
 
 ## Docker Compose Support
 

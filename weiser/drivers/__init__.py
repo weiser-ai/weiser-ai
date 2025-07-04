@@ -5,15 +5,17 @@ from weiser.drivers.base import BaseDriver
 from weiser.drivers.postgres import PostgresDriver
 from weiser.drivers.snowflake import SnowflakeDriver
 from weiser.drivers.databricks import DatabricksDriver
+from weiser.drivers.bigquery import BigQueryDriver
 
 
 DB_DRIVER_MAP = {
     DBType.postgresql: PostgresDriver,
     DBType.snowflake: SnowflakeDriver,
     DBType.databricks: DatabricksDriver,
+    DBType.bigquery: BigQueryDriver,
 }
 
-DBDriverType = Union[BaseDriver, PostgresDriver, SnowflakeDriver, DatabricksDriver]
+DBDriverType = Union[BaseDriver, PostgresDriver, SnowflakeDriver, DatabricksDriver, BigQueryDriver]
 
 
 class DriverFactory:

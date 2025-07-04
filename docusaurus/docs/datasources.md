@@ -13,7 +13,7 @@ Currently supported datasources:
 | **Cube.js**    | `cube`       | ✅ Fully Supported | Semantic Layer, Business Metrics |
 | **MySQL**      | `mysql`      | 📋 Planned         | OLTP, Web Applications           |
 | **Databricks** | `databricks` | ✅ Fully Supported | Cloud Data Warehouse             |
-| **BigQuery**   | `bigquery`   | 📋 Planned         | Cloud Data Warehouse             |
+| **BigQuery**   | `bigquery`   | ✅ Fully Supported | Cloud Data Warehouse             |
 | **Redshift**   | `redshift`   | 📋 Planned         | Cloud Data Warehouse             |
 | **Athena**     | `athena`     | 📋 Planned         | Cloud Data Warehouse             |
 | **Trino**      | `trino`      | 📋 Planned         | Distributed Data Warehouse       |
@@ -641,6 +641,297 @@ datasources:
   type: row_count
   condition: eq
   threshold: 1000
+```
+
+## BigQuery
+
+BigQuery is Google Cloud's fully-managed data warehouse that supports all Weiser check types. The BigQuery connector provides native support for Google Cloud authentication, regional datasets, and BigQuery-specific SQL features.
+
+### Configuration
+
+#### Basic Connection
+
+```yaml
+datasources:
+  - name: bigquery_prod
+    type: bigquery
+    project_id: my-gcp-project
+    dataset_id: production_data
+    credentials_path: /path/to/service-account.json
+```
+
+#### Connection with Location
+
+```yaml
+datasources:
+  - name: bigquery_eu
+    type: bigquery
+    project_id: my-gcp-project
+    dataset_id: eu_dataset
+    location: europe-west1
+    credentials_path: /path/to/service-account.json
+```
+
+#### Connection URI
+
+```yaml
+datasources:
+  - name: bigquery_warehouse
+    type: bigquery
+    uri: bigquery://my-project/my-dataset?credentials_path=/path/to/creds.json&location=us-central1
+```
+
+#### Environment Variables (Recommended)
+
+```yaml
+datasources:
+  - name: bigquery_prod
+    type: bigquery
+    project_id: {{GCP_PROJECT_ID}}
+    dataset_id: {{BIGQUERY_DATASET}}
+    credentials_path: {{GOOGLE_APPLICATION_CREDENTIALS}}
+    location: {{BIGQUERY_LOCATION}}
+```
+
+### Connection Parameters
+
+| Parameter         | Required | Default | Description                                                |
+| ----------------- | -------- | ------- | ---------------------------------------------------------- |
+| `name`            | Yes      | -       | Unique datasource identifier                               |
+| `type`            | Yes      | -       | Must be `bigquery`                                         |
+| `project_id`      | Yes\*    | -       | Google Cloud project ID                                    |
+| `dataset_id`      | No       | -       | Default dataset ID to use                                  |
+| `db_name`         | No       | -       | Alternative to dataset_id (fallback)                      |
+| `credentials_path`| No       | -       | Path to service account JSON file                          |
+| `location`        | No       | -       | Dataset location (e.g., us-central1, europe-west1)        |
+| `uri`             | Yes\*    | -       | Complete connection URI (alternative to individual params) |
+
+\*Either individual parameters OR uri is required
+
+### Setup Requirements
+
+#### 1. Google Cloud Project Setup
+
+1. Create or select a Google Cloud project
+2. Enable the BigQuery API
+3. Create a service account with BigQuery permissions
+4. Download the service account JSON key file
+
+#### 2. Service Account Permissions
+
+```bash
+# Grant BigQuery Data Viewer role
+gcloud projects add-iam-policy-binding my-gcp-project \
+    --member="serviceAccount:weiser@my-gcp-project.iam.gserviceaccount.com" \
+    --role="roles/bigquery.dataViewer"
+
+# Grant BigQuery Job User role (for running queries)
+gcloud projects add-iam-policy-binding my-gcp-project \
+    --member="serviceAccount:weiser@my-gcp-project.iam.gserviceaccount.com" \
+    --role="roles/bigquery.jobUser"
+```
+
+#### 3. Authentication Methods
+
+**Option A: Service Account Key File**
+```yaml
+datasources:
+  - name: bigquery_prod
+    type: bigquery
+    project_id: my-gcp-project
+    credentials_path: /path/to/service-account.json
+```
+
+**Option B: Environment Variable**
+```bash
+export GOOGLE_APPLICATION_CREDENTIALS="/path/to/service-account.json"
+```
+
+**Option C: Application Default Credentials (GCP environments)**
+```yaml
+# No credentials_path needed when running on GCP
+datasources:
+  - name: bigquery_prod
+    type: bigquery
+    project_id: my-gcp-project
+```
+
+### Supported Features
+
+| Feature                   | BigQuery Support |
+| ------------------------- | ---------------- |
+| **Row Count Checks**      | ✅ Full Support  |
+| **Numeric Checks**        | ✅ Full Support  |
+| **Sum/Min/Max Checks**    | ✅ Full Support  |
+| **Not Empty Checks**      | ✅ Full Support  |
+| **Anomaly Detection**     | ✅ Full Support  |
+| **Custom SQL**            | ✅ Full Support  |
+| **Time Dimensions**       | ✅ Full Support  |
+| **Dimensions/Grouping**   | ✅ Full Support  |
+| **Complex Filters**       | ✅ Full Support  |
+| **Window Functions**      | ✅ Full Support  |
+| **Statistical Functions** | ✅ Full Support  |
+| **Standard SQL**          | ✅ Full Support  |
+
+### BigQuery-Specific Examples
+
+#### Using BigQuery Date Functions
+
+```yaml
+- name: recent_data_check
+  dataset: orders
+  type: row_count
+  condition: gt
+  threshold: 100
+  filter: created_at >= DATE_SUB(CURRENT_DATE(), INTERVAL 7 DAY)
+```
+
+#### Cross-Dataset Queries
+
+```yaml
+- name: cross_dataset_check
+  dataset: "`my-project.dataset1.orders` o JOIN `my-project.dataset2.customers` c ON o.customer_id = c.id"
+  type: row_count
+  condition: gt
+  threshold: 1000
+```
+
+#### Using BigQuery Array Functions
+
+```yaml
+- name: array_data_check
+  dataset: events
+  type: numeric
+  measure: ARRAY_LENGTH(event_tags)
+  condition: between
+  threshold: [1, 10]
+  filter: event_date = CURRENT_DATE()
+```
+
+#### Partitioned Table Queries
+
+```yaml
+- name: partition_efficiency_check
+  dataset: "`my-project.analytics.events`"
+  type: row_count
+  condition: gt
+  threshold: 10000
+  filter: _PARTITIONTIME >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 1 DAY)
+```
+
+### Performance Optimization
+
+#### Query Optimization
+
+```sql
+-- Use clustering and partitioning for large tables
+CREATE TABLE `my-project.analytics.events`
+(
+  event_timestamp TIMESTAMP,
+  user_id STRING,
+  event_name STRING,
+  event_data JSON
+)
+PARTITION BY DATE(event_timestamp)
+CLUSTER BY user_id, event_name;
+```
+
+#### Cost Management
+
+```yaml
+# Use specific datasets to limit query scope
+- name: cost_efficient_check
+  dataset: "`my-project.production.orders`"  # Specific table reference
+  type: row_count
+  condition: gt
+  threshold: 1000
+  filter: DATE(created_at) = CURRENT_DATE()  # Partition pruning
+```
+
+#### Regional Optimization
+
+```yaml
+# Use location parameter for regional datasets
+datasources:
+  - name: bigquery_eu
+    type: bigquery
+    project_id: my-gcp-project
+    dataset_id: eu_dataset
+    location: europe-west1  # Reduces latency for EU data
+```
+
+### Common Issues & Solutions
+
+#### Authentication Errors
+
+```yaml
+# Ensure service account has proper permissions
+datasources:
+  - name: bigquery_prod
+    type: bigquery
+    project_id: my-gcp-project
+    credentials_path: /path/to/service-account.json  # Must have BigQuery permissions
+```
+
+#### Dataset Access Issues
+
+```yaml
+# Use fully qualified table names for cross-project access
+- name: cross_project_check
+  dataset: "`other-project.public_data.table_name`"
+  type: row_count
+  condition: gt
+  threshold: 100
+```
+
+#### Query Quotas and Limits
+
+```yaml
+# Use LIMIT for large table sampling
+- name: sample_data_check
+  dataset: |
+    SELECT * FROM `my-project.large_dataset.big_table`
+    TABLESAMPLE SYSTEM (1 PERCENT)  -- BigQuery sampling
+  type: row_count
+  condition: gt
+  threshold: 1000
+```
+
+#### Slot Availability
+
+```yaml
+# Consider query priority and complexity
+# BigQuery automatically manages slot allocation
+# For consistent performance, consider reservations for production workloads
+```
+
+### Cost Considerations
+
+#### Query Costs
+
+- BigQuery charges based on data processed
+- Use partition pruning and clustering for cost efficiency
+- Consider query caching for repeated checks
+
+#### Best Practices
+
+```yaml
+# Efficient date filtering
+- name: cost_efficient_check
+  dataset: orders
+  type: row_count
+  condition: gt
+  threshold: 100
+  filter: DATE(created_at) = CURRENT_DATE()  # Uses partition pruning
+
+# Avoid SELECT * on large tables
+- name: specific_column_check
+  dataset: |
+    SELECT order_id, status FROM orders
+    WHERE DATE(created_at) = CURRENT_DATE()
+  type: row_count
+  condition: gt
+  threshold: 50
 ```
 
 ## Cube
