@@ -1,7 +1,7 @@
 
 [project]
 name = "weiser-ai"
-version = "0.1.16"
+version = "0.2.0"
 description = "Enterprise-grade data quality framework with YAML configuration, LLM-friendly design, and advanced statistical validation"
 keywords = ["data-quality", "data-validation", "data-testing", "sql", "yaml", "llm", "ai"]
 authors = [
@@ -60,7 +60,8 @@ requires = ["pdm-backend"]
 build-backend = "pdm.backend"
 
 [tool.pdm.build]
-source-includes = ["weiser/"]
+includes = ["weiser/"]
+excludes = ["tests/"]
 
 [tool.pdm.dev-dependencies]
 test = [
