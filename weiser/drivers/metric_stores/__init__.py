@@ -1,10 +1,11 @@
 from typing import Union
 from weiser.drivers.metric_stores.duckdb import DuckDBMetricStore
+from weiser.drivers.metric_stores.duckdb_v2 import DuckDBMetricStoreV2
 from weiser.drivers.metric_stores.postgres import PostgresMetricStore
 from weiser.loader.models import MetricStore, MetricStoreType
 
 QUERY_TYPE_MAP = {
-    MetricStoreType.duckdb: DuckDBMetricStore,
+    MetricStoreType.duckdb: DuckDBMetricStoreV2,
     MetricStoreType.postgresql: PostgresMetricStore,
 }
 

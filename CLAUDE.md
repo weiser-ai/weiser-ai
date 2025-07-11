@@ -205,6 +205,62 @@ connections:
 - **Cube.js**: Semantic layer integration (PostgreSQL-compatible)
 - **DuckDB**: For metric storage and local development
 
+## Database Migrations
+
+### PostgreSQL MetricStore Migrations
+
+PostgreSQL V2 metricstore uses **Alembic** for database schema migrations:
+
+```bash
+# Set the weiser configuration file
+export WEISER_CONFIG=examples/postgres-metricstore.yaml
+
+# Run migrations to create/update database schema
+source ~/.weiser_activate && alembic upgrade head
+
+# Create a new migration (if needed)
+source ~/.weiser_activate && alembic revision --autogenerate -m "Add new column"
+
+# Check migration status
+source ~/.weiser_activate && alembic current
+```
+
+**Key Files:**
+- `alembic.ini` - Alembic configuration
+- `alembic/env.py` - Environment configuration (reads weiser config)
+- `alembic/versions/` - Migration files
+- `weiser/drivers/metric_stores/models.py` - SQLModel schema definitions
+
+### DuckDB MetricStore Migrations
+
+DuckDB V2 metricstore uses a **custom migration system** since DuckDB doesn't support Alembic:
+
+```python
+from weiser.drivers.metric_stores.duckdb_v2 import DuckDBMetricStoreV2
+
+# Initialize store (automatically runs pending migrations)
+store = DuckDBMetricStoreV2(config)
+
+# Check migration status
+store.migration_status()
+
+# Create a new migration
+migration_file = store.create_migration('Add priority column')
+
+# Apply specific migrations
+store.migrate_up('20250710_000001')
+
+# Rollback migrations
+store.migrate_down('20250710_000001')
+```
+
+**Key Files:**
+- `weiser/drivers/metric_stores/migrations/` - Migration framework
+- `weiser/drivers/metric_stores/migrations/versions/` - Migration files
+- `weiser/drivers/metric_stores/migrations/README.md` - **Complete migration guide**
+
+**📖 For detailed DuckDB migration instructions, see:** [`weiser/drivers/metric_stores/migrations/README.md`](weiser/drivers/metric_stores/migrations/README.md)
+
 ## Key Implementation Details
 
 ### Check ID Generation
