@@ -10,7 +10,10 @@ This version addresses DuckDB-specific constraints:
 from datetime import datetime
 from typing import List, Optional
 from sqlmodel import SQLModel, Field
+from sqlalchemy import MetaData
 
+# Create separate metadata instance for DuckDB to avoid conflicts
+duckdb_metadata = MetaData()
 
 class MetricRecordDuckDB(SQLModel, table=True):
     """
@@ -24,6 +27,9 @@ class MetricRecordDuckDB(SQLModel, table=True):
 
     __tablename__ = "metrics"
     __table_args__ = {"extend_existing": True}
+    
+    # Use separate metadata to avoid conflicts with PostgreSQL models
+    metadata = duckdb_metadata
 
     # Manual ID management since DuckDB doesn't support SERIAL
     id: Optional[int] = Field(
