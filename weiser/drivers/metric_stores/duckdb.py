@@ -164,7 +164,8 @@ class DuckDBMetricStore:
                     success BOOLEAN,
                     threshold VARCHAR,
                     threshold_list VARCHAR,
-                    type VARCHAR
+                    type VARCHAR,
+                    tenant_id INTEGER DEFAULT 1
                 )
             """
                 )
@@ -217,6 +218,9 @@ class DuckDBMetricStore:
                     text("SELECT COUNT(*) FROM metrics")
                 ).first()[0]
 
+                # Migrate S3 schema to match current local schema before importing
+                self._migrate_s3_schema(session, s3_path)
+
                 session.exec(
                     text(
                         f"""
@@ -236,7 +240,8 @@ class DuckDBMetricStore:
                         COALESCE(success, NULL)::BOOLEAN as success,
                         COALESCE(threshold, NULL)::VARCHAR as threshold,
                         COALESCE(threshold_list, NULL)::VARCHAR as threshold_list,
-                        COALESCE(type, NULL)::VARCHAR as type
+                        COALESCE(type, NULL)::VARCHAR as type,
+                        COALESCE(tenant_id, 1)::INTEGER as tenant_id
                     FROM read_parquet('{s3_path}', union_by_name=true) 
                     WHERE {last_run_time}
                 """
@@ -261,6 +266,142 @@ class DuckDBMetricStore:
             )
             # Ignore errors when S3 data doesn't exist yet
             pass
+
+    def _migrate_s3_schema(self, session: Session, s3_path: str) -> None:
+        """
+        Migrate S3 parquet files to match the current local schema.
+        
+        This creates a unified schema by reading existing S3 data and adding missing columns
+        with default values, then writing it back to S3 with the updated schema.
+        """
+        try:
+            if self.verbose:
+                print("Checking S3 schema compatibility...")
+            
+            # Get current local schema from the metrics table
+            local_schema = session.exec(text("DESCRIBE metrics")).fetchall()
+            local_columns = {row[0]: row[1] for row in local_schema}
+            
+            # Try to get S3 schema - if no files exist, skip migration
+            try:
+                s3_schema = session.exec(
+                    text(f"DESCRIBE (SELECT * FROM read_parquet('{s3_path}', union_by_name=true) LIMIT 1)")
+                ).fetchall()
+                s3_columns = {row[0]: row[1] for row in s3_schema}
+            except Exception:
+                if self.verbose:
+                    print("No S3 data found, skipping schema migration")
+                return
+            
+            # Find missing columns in S3 data
+            missing_columns = set(local_columns.keys()) - set(s3_columns.keys())
+            
+            if not missing_columns:
+                if self.verbose:
+                    print("S3 schema is up to date")
+                return
+            
+            if self.verbose:
+                print(f"S3 schema migration needed. Missing columns: {missing_columns}")
+            
+            # Build SELECT statement with missing columns added
+            select_columns = []
+            for col_name, col_type in local_columns.items():
+                if col_name in s3_columns:
+                    # Column exists in S3, use it as-is
+                    select_columns.append(f"COALESCE({col_name}, NULL) as {col_name}")
+                else:
+                    # Column missing in S3, add default value
+                    default_value = self._get_default_value_for_column(col_name, col_type)
+                    select_columns.append(f"{default_value} as {col_name}")
+            
+            # Create temporary migrated parquet files
+            temp_s3_path = f"s3://{self.config.s3_bucket}/tmp/migrated_metrics.parquet"
+            
+            if self.verbose:
+                print(f"Migrating S3 schema to: {temp_s3_path}")
+            
+            session.exec(
+                text(f"""
+                    COPY (
+                        SELECT {', '.join(select_columns)}
+                        FROM read_parquet('{s3_path}', union_by_name=true)
+                    ) TO '{temp_s3_path}' (FORMAT 'parquet')
+                """)
+            )
+            
+            # Replace old files with migrated ones
+            if self.s3_client:
+                self._replace_s3_files_with_migrated(temp_s3_path)
+            
+            if self.verbose:
+                print("S3 schema migration completed")
+                
+        except Exception as e:
+            if self.verbose:
+                print(f"S3 schema migration failed (will use fallback): {e}")
+            # Don't raise - let the import continue with fallback logic
+    
+    def _get_default_value_for_column(self, col_name: str, col_type: str) -> str:
+        """Get appropriate default value for a missing column based on its type and name."""
+        # Define default values for known columns
+        column_defaults = {
+            'tenant_id': '1::INTEGER',
+            'id': 'NULL::INTEGER',  # Will be handled by sequence
+        }
+        
+        if col_name in column_defaults:
+            return column_defaults[col_name]
+        
+        # Fallback based on type
+        if 'INTEGER' in col_type.upper():
+            return 'NULL::INTEGER'
+        elif 'BOOLEAN' in col_type.upper():
+            return 'NULL::BOOLEAN'
+        elif 'DOUBLE' in col_type.upper() or 'FLOAT' in col_type.upper():
+            return 'NULL::DOUBLE'
+        elif 'TIMESTAMP' in col_type.upper():
+            return 'NULL::TIMESTAMP'
+        else:
+            return 'NULL::VARCHAR'
+    
+    def _replace_s3_files_with_migrated(self, temp_s3_path: str) -> None:
+        """Replace original S3 files with the schema-migrated version."""
+        try:
+            bucket_name = self.config.s3_bucket
+            
+            # Delete old parquet files
+            response = self.s3_client.list_objects_v2(
+                Bucket=bucket_name, Prefix="metrics/"
+            )
+            
+            if "Contents" in response:
+                for obj in response["Contents"]:
+                    if obj["Key"].endswith(".parquet"):
+                        self.s3_client.delete_object(Bucket=bucket_name, Key=obj["Key"])
+            
+            # Move migrated file to metrics location
+            copy_source = {
+                "Bucket": bucket_name,
+                "Key": "tmp/migrated_metrics.parquet",
+            }
+            self.s3_client.copy_object(
+                CopySource=copy_source,
+                Bucket=bucket_name,
+                Key="metrics/migrated_metrics.parquet",
+            )
+            
+            # Delete temporary file
+            self.s3_client.delete_object(
+                Bucket=bucket_name, Key="tmp/migrated_metrics.parquet"
+            )
+            
+            if self.verbose:
+                print("S3 files replaced with migrated schema")
+                
+        except Exception as e:
+            if self.verbose:
+                print(f"Warning: S3 file replacement failed: {e}")
 
     def _run_migrations(self) -> None:
         """Run any pending migrations."""
@@ -342,6 +483,10 @@ class DuckDBMetricStore:
 
     def insert_results(self, record: dict) -> None:
         """Insert a metric record into the database."""
+        # Add tenant_id from config if not present in record
+        if "tenant_id" not in record and hasattr(self.config, "tenant_id"):
+            record["tenant_id"] = self.config.tenant_id
+        
         # Create MetricRecordDuckDB instance (handles threshold conversion internally)
         metric_record = MetricRecordDuckDB.from_dict(record)
 

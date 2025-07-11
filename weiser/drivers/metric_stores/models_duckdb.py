@@ -54,6 +54,7 @@ class MetricRecordDuckDB(SQLModel, table=True):
     threshold_list: Optional[str] = Field(default=None)  # JSON string representation
 
     type: Optional[str] = Field(default=None)
+    tenant_id: Optional[int] = Field(default=1)
 
     @classmethod
     def from_dict(cls, record: dict) -> "MetricRecordDuckDB":
@@ -94,6 +95,7 @@ class MetricRecordDuckDB(SQLModel, table=True):
             threshold=threshold,
             threshold_list=threshold_list,
             type=record.get("type"),
+            tenant_id=record.get("tenant_id", 1),
         )
 
     def get_threshold_list(self) -> Optional[List[float]]:

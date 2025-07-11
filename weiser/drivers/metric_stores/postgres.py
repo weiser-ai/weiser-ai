@@ -111,6 +111,7 @@ class PostgresMetricStore:
             threshold=threshold,
             threshold_list=threshold_list,
             type=record.get("type"),
+            tenant_id=record.get("tenant_id", self.config.tenant_id),
         )
 
         with Session(self.engine) as session:

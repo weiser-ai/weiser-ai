@@ -192,6 +192,7 @@ class MetricStore(BaseModel):
     host: Optional[str] = None
     password: Optional[SecretStr] = None
     port: Optional[int] = None
+    tenant_id: Optional[int] = 1
     s3_access_key: Optional[str] = None
     s3_secret_access_key: Optional[str] = None
     s3_endpoint: Optional[str] = None

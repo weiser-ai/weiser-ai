@@ -21,3 +21,4 @@ class MetricRecord(SQLModel, table=True):
     threshold: Optional[str] = Field(default=None)
     threshold_list: Optional[List[float]] = Field(default=None, sa_column=Column(ARRAY(Float)))
     type: Optional[str] = Field(default=None)
+    tenant_id: Optional[int] = Field(default=1)
