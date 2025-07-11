@@ -14,10 +14,10 @@ MetricStoreDB = Union[DuckDBMetricStore, PostgresMetricStore]
 
 class MetricStoreFactory:
     @staticmethod
-    def create_driver(metric_store: MetricStore) -> MetricStoreDB:
+    def create_driver(metric_store: MetricStore, verbose: bool = False) -> MetricStoreDB:
         if metric_store:
             return QUERY_TYPE_MAP.get(
                 metric_store.db_type,
                 DuckDBMetricStore,
-            )(metric_store)
-        return DuckDBMetricStore(MetricStore())
+            )(metric_store, verbose=verbose)
+        return DuckDBMetricStore(MetricStore(verbose=verbose))

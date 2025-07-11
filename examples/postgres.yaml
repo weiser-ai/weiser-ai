@@ -1,0 +1,26 @@
+version: 1
+datasources:
+  - name: default
+    type: postgresql
+    db_name: transactions
+    user: postgres
+    password: postgres
+    port: 5432
+    host: localhost
+
+checks:
+  - name: test row_count
+    dataset: [orders]
+    type: row_count
+    condition: gt
+    threshold: 0
+
+connections:
+  - name: metricstore
+    type: metricstore
+    db_type: postgresql
+    host: localhost
+    port: 5432
+    db_name: metricstore
+    user: postgres
+    password: postgres

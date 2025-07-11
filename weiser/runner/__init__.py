@@ -129,7 +129,7 @@ def pre_run_config(
     context = {
         "config": base_config,
         "connections": {},
-        "metric_store": MetricStoreFactory.create_driver(metric_store),
+        "metric_store": MetricStoreFactory.create_driver(metric_store, verbose=verbose),
         "run_id": str(uuid.uuid4()),
         "run_ts": datetime.now(),
     }

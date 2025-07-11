@@ -50,6 +50,21 @@ Weiser is a data quality framework designed to ensure data integrity and accurac
 
 ## Development Commands
 
+### Environment Setup
+
+**IMPORTANT**: This project requires the `weiser-cli` conda environment for all development tasks. Always activate this environment before running any commands:
+
+```bash
+# Activate the weiser-cli conda environment
+source ~/miniforge3/etc/profile.d/conda.sh
+conda activate weiser-cli
+```
+
+When using Claude Code, prefix all bash commands with environment activation:
+```bash
+source ~/.weiser_activate && [your_command]
+```
+
 ### Setup and Installation
 
 ```bash
@@ -60,6 +75,20 @@ pip install weiser-ai
 cd weiser-ui
 pip install -r requirements.txt
 ```
+
+### Adding Python Dependencies
+
+**IMPORTANT**: Never modify `pyproject.toml` directly. Use PDM for dependency management:
+
+```bash
+# Add a new dependency
+source ~/.weiser_activate && pdm add <package_name>
+
+# Install dependencies in conda environment
+source ~/.weiser_activate && ./export_pdm.sh
+```
+
+This ensures dependencies are properly managed in both PDM and the conda environment.
 
 ### Running Checks
 
@@ -176,6 +205,62 @@ connections:
 - **Cube.js**: Semantic layer integration (PostgreSQL-compatible)
 - **DuckDB**: For metric storage and local development
 
+## Database Migrations
+
+### PostgreSQL MetricStore Migrations
+
+PostgreSQL V2 metricstore uses **Alembic** for database schema migrations:
+
+```bash
+# Set the weiser configuration file
+export WEISER_CONFIG=examples/postgres-metricstore.yaml
+
+# Run migrations to create/update database schema
+source ~/.weiser_activate && alembic upgrade head
+
+# Create a new migration (if needed)
+source ~/.weiser_activate && alembic revision --autogenerate -m "Add new column"
+
+# Check migration status
+source ~/.weiser_activate && alembic current
+```
+
+**Key Files:**
+- `alembic.ini` - Alembic configuration
+- `alembic/env.py` - Environment configuration (reads weiser config)
+- `alembic/versions/` - Migration files
+- `weiser/drivers/metric_stores/models.py` - SQLModel schema definitions
+
+### DuckDB MetricStore Migrations
+
+DuckDB V2 metricstore uses a **custom migration system** since DuckDB doesn't support Alembic:
+
+```python
+from weiser.drivers.metric_stores.duckdb_v2 import DuckDBMetricStoreV2
+
+# Initialize store (automatically runs pending migrations)
+store = DuckDBMetricStoreV2(config)
+
+# Check migration status
+store.migration_status()
+
+# Create a new migration
+migration_file = store.create_migration('Add priority column')
+
+# Apply specific migrations
+store.migrate_up('20250710_000001')
+
+# Rollback migrations
+store.migrate_down('20250710_000001')
+```
+
+**Key Files:**
+- `weiser/drivers/metric_stores/migrations/` - Migration framework
+- `weiser/drivers/metric_stores/migrations/versions/` - Migration files
+- `weiser/drivers/metric_stores/migrations/README.md` - **Complete migration guide**
+
+**📖 For detailed DuckDB migration instructions, see:** [`weiser/drivers/metric_stores/migrations/README.md`](weiser/drivers/metric_stores/migrations/README.md)
+
 ## Key Implementation Details
 
 ### Check ID Generation
@@ -289,3 +374,34 @@ Multiple Docker Compose configurations available:
 - `docker-compose-postgres.yaml`: PostgreSQL setup
 - `docker-compose-duckdb-minio.yaml`: DuckDB with MinIO
 - `docker-compose.yaml`: Full stack deployment
+
+## Git Workflow
+
+**IMPORTANT**: The user manages all git commits. Claude Code should NEVER commit changes.
+
+### Tracking Progress
+
+Use these git commands to track what has been changed:
+
+```bash
+# See current status and modified files
+source ~/.weiser_activate && git status
+
+# See specific changes in a file
+source ~/.weiser_activate && git diff <file-name>
+
+# See all changes
+source ~/.weiser_activate && git diff
+
+# See files changed in the last commit
+source ~/.weiser_activate && git diff --name-status HEAD~1..HEAD
+
+# See detailed changes in the last commit
+source ~/.weiser_activate && git diff HEAD~1..HEAD
+```
+
+### Git Guidelines
+
+- **NEVER run `git commit`** - the user will commit when satisfied with changes
+- Use `git status` and `git diff` to track progress and understand what has been modified
+- If you lose track of your changes, use git operations to review what has been done
