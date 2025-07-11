@@ -50,6 +50,21 @@ Weiser is a data quality framework designed to ensure data integrity and accurac
 
 ## Development Commands
 
+### Environment Setup
+
+**IMPORTANT**: This project requires the `weiser-cli` conda environment for all development tasks. Always activate this environment before running any commands:
+
+```bash
+# Activate the weiser-cli conda environment
+source ~/miniforge3/etc/profile.d/conda.sh
+conda activate weiser-cli
+```
+
+When using Claude Code, prefix all bash commands with environment activation:
+```bash
+source ~/.weiser_activate && [your_command]
+```
+
 ### Setup and Installation
 
 ```bash
@@ -60,6 +75,20 @@ pip install weiser-ai
 cd weiser-ui
 pip install -r requirements.txt
 ```
+
+### Adding Python Dependencies
+
+**IMPORTANT**: Never modify `pyproject.toml` directly. Use PDM for dependency management:
+
+```bash
+# Add a new dependency
+source ~/.weiser_activate && pdm add <package_name>
+
+# Install dependencies in conda environment
+source ~/.weiser_activate && ./export_pdm.sh
+```
+
+This ensures dependencies are properly managed in both PDM and the conda environment.
 
 ### Running Checks
 
@@ -289,3 +318,28 @@ Multiple Docker Compose configurations available:
 - `docker-compose-postgres.yaml`: PostgreSQL setup
 - `docker-compose-duckdb-minio.yaml`: DuckDB with MinIO
 - `docker-compose.yaml`: Full stack deployment
+
+## Git Workflow
+
+**IMPORTANT**: The user manages all git commits. Claude Code should NEVER commit changes.
+
+### Tracking Progress
+
+Use these git commands to track what has been changed:
+
+```bash
+# See current status and modified files
+source ~/.weiser_activate && git status
+
+# See specific changes in a file
+source ~/.weiser_activate && git diff <file-name>
+
+# See all changes
+source ~/.weiser_activate && git diff
+```
+
+### Git Guidelines
+
+- **NEVER run `git commit`** - the user will commit when satisfied with changes
+- Use `git status` and `git diff` to track progress and understand what has been modified
+- If you lose track of your changes, use git operations to review what has been done
