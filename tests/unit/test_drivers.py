@@ -884,15 +884,14 @@ class TestBigQueryDriver:
 class TestDuckDBMetricStore:
     """Test DuckDBMetricStore functionality."""
 
-    @patch("duckdb.connect")
+    @patch("weiser.drivers.metric_stores.duckdb.create_engine")
     @patch("boto3.client")
     def test_duckdb_metric_store_initialization(
-        self, mock_boto3_client, mock_duckdb_connect
+        self, mock_boto3_client, mock_create_engine
     ):
         """Test DuckDBMetricStore initialization."""
-        mock_conn = Mock()
-        mock_duckdb_connect.return_value.__enter__.return_value = mock_conn
-        mock_conn.sql.return_value.fetchall.return_value = [(None,)]
+        mock_engine = Mock()
+        mock_create_engine.return_value = mock_engine
 
         config = MetricStore(
             db_type=MetricStoreType.duckdb,
@@ -907,17 +906,16 @@ class TestDuckDBMetricStore:
         assert store.config == config
         assert store.db_name == "./metricstore.db"
         mock_boto3_client.assert_called_once()
-        mock_duckdb_connect.assert_called()
+        mock_create_engine.assert_called_with("duckdb:///./metricstore.db")
 
-    @patch("duckdb.connect")
+    @patch("weiser.drivers.metric_stores.duckdb.create_engine")
     @patch("boto3.client")
     def test_duckdb_metric_store_with_custom_db_name(
-        self, mock_boto3_client, mock_duckdb_connect
+        self, mock_boto3_client, mock_create_engine
     ):
         """Test DuckDBMetricStore with custom database name."""
-        mock_conn = Mock()
-        mock_duckdb_connect.return_value.__enter__.return_value = mock_conn
-        mock_conn.sql.return_value.fetchall.return_value = [(None,)]
+        mock_engine = Mock()
+        mock_create_engine.return_value = mock_engine
 
         config = MetricStore(
             db_type=MetricStoreType.duckdb,
@@ -929,16 +927,21 @@ class TestDuckDBMetricStore:
         store = DuckDBMetricStore(config)
 
         assert store.db_name == "custom_metrics.db"
+        mock_create_engine.assert_called_with("duckdb:///custom_metrics.db")
 
-    @patch("duckdb.connect")
+    @patch("weiser.drivers.metric_stores.duckdb.Session")
+    @patch("weiser.drivers.metric_stores.duckdb.create_engine")
     @patch("boto3.client")
     def test_duckdb_metric_store_s3_path_style(
-        self, mock_boto3_client, mock_duckdb_connect
+        self, mock_boto3_client, mock_create_engine, mock_session_class
     ):
         """Test DuckDBMetricStore with S3 path style configuration."""
-        mock_conn = Mock()
-        mock_duckdb_connect.return_value.__enter__.return_value = mock_conn
-        mock_conn.sql.return_value.fetchall.return_value = [(None,)]
+        mock_engine = Mock()
+        mock_create_engine.return_value = mock_engine
+        
+        mock_session = Mock()
+        mock_session_class.return_value.__enter__.return_value = mock_session
+        mock_session.exec.return_value.first.return_value = (0,)  # For count queries
 
         config = MetricStore(
             db_type=MetricStoreType.duckdb,
@@ -951,165 +954,170 @@ class TestDuckDBMetricStore:
         # will call the DuckDBMetricStore constructor
         store = DuckDBMetricStore(config)  # ignore the warning about unused variable
 
-        # Check that the path style was configured
-        mock_conn.sql.assert_any_call("SET s3_url_style='path'")
-        mock_conn.sql.assert_any_call("SET s3_endpoint = 'localhost:9000'")
+        # Check that the path style was configured by verifying text() calls
+        exec_calls = [call.args[0].text for call in mock_session.exec.call_args_list if hasattr(call.args[0], 'text')]
+        assert any("SET s3_url_style='path'" in call for call in exec_calls)
+        assert any("SET s3_endpoint = 'localhost:9000'" in call for call in exec_calls)
 
-    @patch("duckdb.connect")
-    def test_execute_query_success(self, mock_duckdb_connect, sample_metric_store):
+    @patch("weiser.drivers.metric_stores.duckdb.Session")
+    @patch("weiser.drivers.metric_stores.duckdb.create_engine")
+    @patch("boto3.client")
+    def test_execute_query_success(self, mock_boto3_client, mock_create_engine, mock_session_class, sample_metric_store):
         """Test successful query execution on metric store."""
-        mock_conn = Mock()
-        mock_duckdb_connect.return_value.__enter__.return_value = mock_conn
-        mock_conn.sql.return_value.fetchall.return_value = [(100.0, "2023-01-01")]
+        mock_engine = Mock()
+        mock_create_engine.return_value = mock_engine
+        
+        mock_session = Mock()
+        mock_session_class.return_value.__enter__.return_value = mock_session
+        mock_session.exec.return_value.first.return_value = (0,)  # For count queries
+        mock_session.exec.return_value = [(100.0, "2023-01-01")]  # For the actual query
 
-        with patch("boto3.client"):
-            # Mock the constructor call
-            mock_conn_init = Mock()
-            mock_conn_init.sql.return_value.fetchall.return_value = [(None,)]
-            mock_duckdb_connect.return_value.__enter__.return_value = mock_conn_init
+        store = DuckDBMetricStore(sample_metric_store)
 
-            store = DuckDBMetricStore(sample_metric_store)
+        mock_query = Mock()
+        mock_query.sql.return_value = "SELECT actual_value, run_time FROM metrics"
 
-            # Reset mock for actual test
-            mock_duckdb_connect.return_value.__enter__.return_value = mock_conn
+        mock_check = Mock()
+        mock_check.model_dump.return_value = {"name": "test_check"}
 
-            mock_query = Mock()
-            mock_query.sql.return_value = "SELECT actual_value, run_time FROM metrics"
+        result = store.execute_query(mock_query, mock_check, validate_results=True)
 
-            mock_check = Mock()
-            mock_check.model_dump.return_value = {"name": "test_check"}
+        assert result == [(100.0, "2023-01-01")]
 
-            result = store.execute_query(mock_query, mock_check, verbose=False)
-
-            assert result == [(100.0, "2023-01-01")]
-
-    @patch("duckdb.connect")
+    @patch("weiser.drivers.metric_stores.duckdb.Session")
+    @patch("weiser.drivers.metric_stores.duckdb.create_engine")
+    @patch("boto3.client")
     def test_execute_query_empty_result_with_validation(
-        self, mock_duckdb_connect, sample_metric_store
+        self, mock_boto3_client, mock_create_engine, mock_session_class, sample_metric_store
     ):
         """Test query execution with empty results and validation enabled."""
-        mock_conn = Mock()
-        mock_duckdb_connect.return_value.__enter__.return_value = mock_conn
-        mock_conn.sql.return_value.fetchall.return_value = []
+        mock_engine = Mock()
+        mock_create_engine.return_value = mock_engine
+        
+        mock_session = Mock()
+        mock_session_class.return_value.__enter__.return_value = mock_session
+        mock_session.exec.return_value.first.return_value = (0,)  # For count queries
+        mock_session.exec.return_value = []  # Empty result for the actual query
 
-        with patch("boto3.client"):
-            # Mock the constructor
-            mock_conn_init = Mock()
-            mock_conn_init.sql.return_value.fetchall.return_value = [(None,)]
-            mock_duckdb_connect.return_value.__enter__.return_value = mock_conn_init
+        store = DuckDBMetricStore(sample_metric_store)
 
-            store = DuckDBMetricStore(sample_metric_store)
+        mock_query = Mock()
+        mock_query.sql.return_value = "SELECT * FROM empty_table"
 
-            # Reset for test
-            mock_duckdb_connect.return_value.__enter__.return_value = mock_conn
+        mock_check = Mock()
+        mock_check.model_dump.return_value = {"name": "test_check"}
 
-            mock_query = Mock()
-            mock_query.sql.return_value = "SELECT * FROM empty_table"
+        with pytest.raises(Exception, match="Unexpected result executing check"):
+            store.execute_query(
+                mock_query, mock_check, validate_results=True
+            )
 
-            mock_check = Mock()
-            mock_check.model_dump.return_value = {"name": "test_check"}
-
-            with pytest.raises(Exception, match="Unexpected result executing check"):
-                store.execute_query(
-                    mock_query, mock_check, verbose=False, validate_results=True
-                )
-
-    @patch("duckdb.connect")
+    @patch("weiser.drivers.metric_stores.duckdb.Session")
+    @patch("weiser.drivers.metric_stores.duckdb.create_engine")
+    @patch("boto3.client")
     def test_insert_results_simple_threshold(
-        self, mock_duckdb_connect, sample_metric_store
+        self, mock_boto3_client, mock_create_engine, mock_session_class, sample_metric_store
     ):
         """Test inserting results with simple threshold."""
-        mock_conn = Mock()
-        mock_duckdb_connect.return_value.__enter__.return_value = mock_conn
+        mock_engine = Mock()
+        mock_create_engine.return_value = mock_engine
+        
+        mock_session = Mock()
+        mock_session_class.return_value.__enter__.return_value = mock_session
+        mock_session.exec.return_value.first.return_value = (0,)  # For count queries
 
-        with patch("boto3.client"):
-            # Mock constructor
-            mock_conn_init = Mock()
-            mock_conn_init.sql.return_value.fetchall.return_value = [(None,)]
-            mock_duckdb_connect.return_value.__enter__.return_value = mock_conn_init
+        store = DuckDBMetricStore(sample_metric_store)
 
-            store = DuckDBMetricStore(sample_metric_store)
+        record = {
+            "actual_value": 100.0,
+            "check_id": "test_check_id",
+            "condition": "gt",
+            "dataset": "orders",
+            "datasource": "test_db",
+            "fail": False,
+            "name": "test_check",
+            "run_id": "run_123",
+            "run_time": "2023-01-01T00:00:00",
+            "measure": "COUNT(*)",
+            "success": True,
+            "threshold": 50.0,
+            "type": "row_count",
+        }
 
-            # Reset for test
-            mock_duckdb_connect.return_value.__enter__.return_value = mock_conn
+        store.insert_results(record)
 
-            record = {
-                "actual_value": 100.0,
-                "check_id": "test_check_id",
-                "condition": "gt",
-                "dataset": "orders",
-                "datasource": "test_db",
-                "fail": False,
-                "name": "test_check",
-                "run_id": "run_123",
-                "run_time": "2023-01-01T00:00:00",
-                "measure": "COUNT(*)",
-                "success": True,
-                "threshold": 50.0,
-                "type": "row_count",
-            }
+        # Verify that session.add was called (SQLModel inserts)
+        mock_session.add.assert_called_once()
+        mock_session.commit.assert_called_once()
 
-            store.insert_results(record)
-
-            mock_conn.sql.assert_called()
-
-    @patch("duckdb.connect")
+    @patch("weiser.drivers.metric_stores.duckdb.Session")
+    @patch("weiser.drivers.metric_stores.duckdb.create_engine")
+    @patch("boto3.client")
     def test_insert_results_list_threshold(
-        self, mock_duckdb_connect, sample_metric_store
+        self, mock_boto3_client, mock_create_engine, mock_session_class, sample_metric_store
     ):
         """Test inserting results with list threshold (between condition)."""
-        mock_conn = Mock()
-        mock_duckdb_connect.return_value.__enter__.return_value = mock_conn
+        mock_engine = Mock()
+        mock_create_engine.return_value = mock_engine
+        
+        mock_session = Mock()
+        mock_session_class.return_value.__enter__.return_value = mock_session
+        mock_session.exec.return_value.first.return_value = (0,)  # For count queries
 
-        with patch("boto3.client"):
-            # Mock constructor
-            mock_conn_init = Mock()
-            mock_conn_init.sql.return_value.fetchall.return_value = [(None,)]
-            mock_duckdb_connect.return_value.__enter__.return_value = mock_conn_init
+        store = DuckDBMetricStore(sample_metric_store)
 
-            store = DuckDBMetricStore(sample_metric_store)
+        record = {
+            "actual_value": 1.5,
+            "check_id": "test_anomaly_id",
+            "condition": "between",
+            "dataset": "metrics",
+            "datasource": "test_db",
+            "fail": False,
+            "name": "test_anomaly",
+            "run_id": "run_123",
+            "run_time": "2023-01-01T00:00:00",
+            "measure": "z_score",
+            "success": True,
+            "threshold": [-2.0, 2.0],
+            "type": "anomaly",
+        }
 
-            # Reset for test
-            mock_duckdb_connect.return_value.__enter__.return_value = mock_conn
+        store.insert_results(record)
 
-            record = {
-                "actual_value": 1.5,
-                "check_id": "test_anomaly_id",
-                "condition": "between",
-                "dataset": "metrics",
-                "datasource": "test_db",
-                "fail": False,
-                "name": "test_anomaly",
-                "run_id": "run_123",
-                "run_time": "2023-01-01T00:00:00",
-                "measure": "z_score",
-                "success": True,
-                "threshold": [-2.0, 2.0],
-                "type": "anomaly",
-            }
+        # Should convert list threshold to threshold_list and insert record
+        mock_session.add.assert_called_once()
+        mock_session.commit.assert_called_once()
 
-            store.insert_results(record)
-
-            # Should convert list threshold to threshold_list
-            mock_conn.sql.assert_called()
-
+    @patch("weiser.drivers.metric_stores.duckdb.Session")
+    @patch("weiser.drivers.metric_stores.duckdb.create_engine")
     @patch("boto3.client")
-    @patch("duckdb.connect")
-    def test_export_results_no_s3(self, mock_duckdb_connect, mock_boto3_client):
+    def test_export_results_no_s3(self, mock_boto3_client, mock_create_engine, mock_session_class):
         """Test export results without S3 configuration."""
-        mock_conn = Mock()
-        mock_duckdb_connect.return_value.__enter__.return_value = mock_conn
-
-        # Mock summary results - need separate mock calls for fetchone and fetchall
-        summary_mock = Mock()
-        summary_mock.fetchone.return_value = (10, 8, 2)  # total, passed, failed
-
-        failures_mock = Mock()
-        failures_mock.fetchall.return_value = [
+        mock_engine = Mock()
+        mock_create_engine.return_value = mock_engine
+        
+        mock_session = Mock()
+        mock_session_class.return_value.__enter__.return_value = mock_session
+        
+        # Create a default mock result for initialization queries
+        default_result = Mock()
+        default_result.first.return_value = (0,)
+        default_result.fetchall.return_value = []
+        default_result.fetchone.return_value = None
+        
+        # Mock exec to return default result for all calls
+        mock_session.exec.return_value = default_result
+        
+        # Mock specific results for the export_results method
+        summary_result = Mock()
+        summary_result.first.return_value = (10, 8, 2)
+        
+        failures_result = Mock()  
+        failures_result.all.return_value = [
             (
                 "failed_check",
-                "orders",
-                "test_db",
+                "orders", 
+                "test_db", 
                 "check_id_123",
                 "gt",
                 5,
@@ -1118,24 +1126,16 @@ class TestDuckDBMetricStore:
             )
         ]
 
-        # Mock different SQL calls
-        mock_conn.sql.side_effect = [summary_mock, failures_mock]
-
         config = MetricStore(
             db_type=MetricStoreType.duckdb,
             # No S3 configuration
         )
 
-        # Mock constructor call
-        mock_conn_init = Mock()
-        mock_conn_init.sql.return_value.fetchall.return_value = [(None,)]
-        mock_duckdb_connect.return_value.__enter__.return_value = mock_conn_init
-
         store = DuckDBMetricStore(config)
-
-        # Reset for test
-        mock_duckdb_connect.return_value.__enter__.return_value = mock_conn
-
+        
+        # Now override the exec mock for the export_results calls
+        mock_session.exec.side_effect = [summary_result, failures_result]
+        
         results = store.export_results("run_123")
 
         assert results["summary"]["total_checks"] == 10

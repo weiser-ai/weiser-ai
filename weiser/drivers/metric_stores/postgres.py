@@ -14,7 +14,8 @@ from weiser.drivers.metric_stores.models import MetricRecord
 
 
 class PostgresMetricStore:
-    def __init__(self, metric_store: MetricStore) -> None:
+    def __init__(self, metric_store: MetricStore, verbose: bool = False) -> None:
+        self.verbose = verbose
         self.config = metric_store
         if not metric_store.uri:
             uri = URL.create(
