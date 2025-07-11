@@ -14,7 +14,7 @@ from weiser.runner import pre_run_config, run_checks, generate_sample_data
 
 # Initialize Typer
 app = typer.Typer()
-version = "0.2.0"
+version = "0.2.1"
 
 
 @app.callback()
