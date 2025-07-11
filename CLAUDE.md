@@ -336,6 +336,12 @@ source ~/.weiser_activate && git diff <file-name>
 
 # See all changes
 source ~/.weiser_activate && git diff
+
+# See files changed in the last commit
+source ~/.weiser_activate && git diff --name-status HEAD~1..HEAD
+
+# See detailed changes in the last commit
+source ~/.weiser_activate && git diff HEAD~1..HEAD
 ```
 
 ### Git Guidelines

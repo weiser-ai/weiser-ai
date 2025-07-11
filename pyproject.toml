@@ -30,6 +30,7 @@ dependencies = [
     "databricks-sqlalchemy>=2.0.7",
     "sqlalchemy-bigquery>=1.13.0",
     "PyMySQL>=1.0.2",
+    "duckdb-engine>=0.17.0",
 ]
 requires-python = "<3.13,>=3.10"
 readme = "README.md"
