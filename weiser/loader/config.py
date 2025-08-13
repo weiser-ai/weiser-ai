@@ -1,5 +1,7 @@
 import glob
 import yaml
+import os
+import typer
 
 from jinja2 import Environment, BaseLoader
 from rich.console import Console
@@ -37,16 +39,28 @@ def load_config(
     first_run: bool = True,
 ) -> dict:
     print_final_table = False
+    is_first_run = first_run
     if first_run:
         first_run = False
         if verbose:
             print_final_table = True
             table = Table("File Path", "# of checks")
         visited_path = {}
+        
+        # Check if the config file exists before attempting to load
+        if not os.path.exists(config_path) and '*' not in config_path:
+            console.print(f"[bold red]Error:[/bold red] Configuration file '{config_path}' does not exist.")
+            raise typer.Exit(1)
 
     file_paths = glob.glob(config_path)
     if verbose:
         console.print(f"Walking Paths: {file_paths}")
+        
+    # Check if glob found any files
+    if not file_paths and is_first_run:
+        console.print(f"[bold red]Error:[/bold red] No configuration files found matching '{config_path}'.")
+        raise typer.Exit(1)
+        
     for file_path in file_paths:
         if file_path in visited_path:
             continue
