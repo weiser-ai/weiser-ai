@@ -40,7 +40,7 @@ class BaseCheck:
     def time_dimension_alias(self) -> str:
         if self.check and self.check.time_dimension:
             return self.snake_case(
-                f"{self.check.time_dimension.name} {self.check.time_dimension.granularity}"
+                f"{self.check.time_dimension.name} {self.check.time_dimension.granularity.value}"
             )
 
     def apply_condition(self, value: Any) -> bool:
@@ -200,7 +200,7 @@ class BaseCheck:
 
         if self.check.time_dimension:
             time_dimension_alias = self.time_dimension_alias()
-            time_dimension_sql = f"DATE_TRUNC('{self.check.time_dimension.granularity}', {self.check.time_dimension.name})"
+            time_dimension_sql = f"DATE_TRUNC('{self.check.time_dimension.granularity.value}', {self.check.time_dimension.name})"
             select_stmnt = [
                 f"{time_dimension_sql} AS {time_dimension_alias}"
             ] + select_stmnt
