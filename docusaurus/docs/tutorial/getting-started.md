@@ -79,7 +79,11 @@ checks:
 First, validate your configuration without running checks:
 
 ```bash
+# Using default .env file
 weiser compile weiser-config.yaml -v
+
+# Using custom .env file
+weiser compile weiser-config.yaml -v --env-file /path/to/custom.env
 ```
 
 This will:
@@ -94,7 +98,11 @@ This will:
 Execute the data quality checks:
 
 ```bash
+# Using default .env file
 weiser run weiser-config.yaml -v
+
+# Using custom .env file
+weiser run weiser-config.yaml -v --env-file /path/to/custom.env
 ```
 
 Expected output:
@@ -118,21 +126,32 @@ For security, use environment variables for sensitive data:
 datasources:
   - name: default
     type: postgresql
-    host: ${DB_HOST}
-    port: ${DB_PORT}
-    db_name: ${DB_NAME}
-    user: ${DB_USER}
-    password: ${DB_PASSWORD}
+    host: {{ DB_HOST }}
+    port: {{ DB_PORT }}
+    db_name: {{ DB_NAME }}
+    user: {{ DB_USER }}
+    password: {{ DB_PASSWORD }}
 ```
 
-Set environment variables:
+Create a `.env` file in your project directory:
 
 ```bash
-export DB_HOST=localhost
-export DB_PORT=5432
-export DB_NAME=your_database
-export DB_USER=your_username
-export DB_PASSWORD=your_password
+# .env
+DB_HOST=localhost
+DB_PORT=5432
+DB_NAME=your_database
+DB_USER=your_username
+DB_PASSWORD=your_password
+```
+
+Or use a custom .env file location:
+
+```bash
+# Use custom .env file
+weiser run weiser-config.yaml --env-file /path/to/custom.env
+
+# Short form
+weiser run weiser-config.yaml -e /path/to/custom.env
 ```
 
 ## Common Check Patterns
