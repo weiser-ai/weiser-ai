@@ -1,7 +1,7 @@
 
 [project]
 name = "weiser-ai"
-version = "0.2.1"
+version = "0.2.2"
 description = "Enterprise-grade data quality framework with YAML configuration, LLM-friendly design, and advanced statistical validation"
 keywords = ["data-quality", "data-validation", "data-testing", "sql", "yaml", "llm", "ai"]
 authors = [
