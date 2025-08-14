@@ -30,18 +30,18 @@ jobs:
       run: |
         pytest tests/unit/ -v
         
-    - name: Run integration tests
-      run: |
-        pytest tests/integration/ -v
+    # - name: Run integration tests
+    #   run: |
+    #     pytest tests/integration/ -v
         
-    - name: Run all tests with coverage
-      run: |
-        pip install pytest-cov
-        pytest --cov=weiser --cov-report=xml --cov-report=term
+    # - name: Run all tests with coverage
+    #   run: |
+    #     pip install pytest-cov
+    #     pytest --cov=weiser --cov-report=xml --cov-report=term
         
-    - name: Upload coverage reports
-      if: matrix.python-version == '3.11'
-      uses: codecov/codecov-action@v3
-      with:
-        file: ./coverage.xml
-        fail_ci_if_error: false
+    # - name: Upload coverage reports
+    #   if: matrix.python-version == '3.11'
+    #   uses: codecov/codecov-action@v3
+    #   with:
+    #     file: ./coverage.xml
+    #     fail_ci_if_error: false

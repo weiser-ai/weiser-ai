@@ -122,10 +122,10 @@ checks:
 
     def test_load_config_file_not_found(self):
         """Test error handling when config file is not found."""
-        # load_config uses glob.glob() which returns empty list for non-existent files
-        # This should result in no files being processed, returning None
-        config = load_config("nonexistent.yaml", verbose=False)
-        assert config is None
+        # load_config raises typer.Exit(1) when config file doesn't exist
+        import click
+        with pytest.raises(click.exceptions.Exit):
+            load_config("nonexistent.yaml", verbose=False)
 
     def test_load_config_invalid_yaml(self, temp_yaml_file):
         """Test error handling with invalid YAML."""
@@ -150,12 +150,12 @@ class TestBaseConfigValidation:
         assert len(sample_base_config.checks) == 2
         assert len(sample_base_config.datasources) == 1
 
-    def test_config_with_missing_checks(self, sample_datasource, sample_metric_store):
+    def test_config_with_missing_checks(self, sample_postgresql_datasource, sample_metric_store):
         """Test BaseConfig allows empty checks list."""
         # The actual implementation allows empty checks
         config = BaseConfig(
             checks=[],  # Empty checks is allowed
-            datasources=[sample_datasource],
+            datasources=[sample_postgresql_datasource],
             connections=[sample_metric_store],
         )
         assert len(config.checks) == 0
