@@ -41,16 +41,19 @@ def run(
     skip_export: Annotated[
         bool, typer.Option("--skip-export", "-s", help="Skip exporting results")
     ] = False,
+    env_file: Annotated[
+        str, typer.Option("--env-file", "-e", help="Path to custom .env file (default: .env)")
+    ] = ".env",
 ):
     """
     Main Command
     """
     # Load .env
-    if os.path.exists(".env"):
+    if os.path.exists(env_file):
         if verbose:
-            print("Loading .env file")
+            print(f"Loading .env file from: {env_file}")
         load_dotenv(
-            dotenv_path=".env",
+            dotenv_path=env_file,
             verbose=verbose,
         )
     env_variables = dict(os.environ)
@@ -83,17 +86,23 @@ def compile(
     verbose: Annotated[
         bool, typer.Option("--verbose", "-v", help="Print to stdout the parsed files")
     ] = False,
+    env_file: Annotated[
+        str, typer.Option("--env-file", "-e", help="Path to custom .env file (default: .env)")
+    ] = ".env",
 ):
     """
     Main Command
     """
     # Load .env
-    if os.path.exists(".env"):
+    if os.path.exists(env_file):
+        if verbose:
+            print(f"Loading .env file from: {env_file}")
         load_dotenv(
-            dotenv_path=".env",
+            dotenv_path=env_file,
             verbose=verbose,
         )
-    config = load_config(input_config)
+    env_variables = dict(os.environ)
+    config = load_config(input_config, context=env_variables)
     pre_run_config(config, compile_only=True, verbose=verbose)
     print(
         f"[{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [green]Finished Config compilation[/green] :rocket:"
@@ -110,17 +119,23 @@ def sample(
     skip_export: Annotated[
         bool, typer.Option("--skip-export", "-s", help="Skip exporting results")
     ] = False,
+    env_file: Annotated[
+        str, typer.Option("--env-file", "-e", help="Path to custom .env file (default: .env)")
+    ] = ".env",
 ):
     """
     Generate sample data based on a check id name.
     """
     # Load .env
-    if os.path.exists(".env"):
+    if os.path.exists(env_file):
+        if verbose:
+            print(f"Loading .env file from: {env_file}")
         load_dotenv(
-            dotenv_path=".env",
+            dotenv_path=env_file,
             verbose=verbose,
         )
-    config = load_config(input_config)
+    env_variables = dict(os.environ)
+    config = load_config(input_config, context=env_variables)
     context = pre_run_config(config, verbose)
     results = generate_sample_data(
         check,

@@ -96,14 +96,23 @@ This ensures dependencies are properly managed in both PDM and the conda environ
 # Run all checks in verbose mode
 weiser run examples/example.yaml -v
 
+# Run with custom .env file
+weiser run examples/example.yaml -v --env-file /path/to/custom.env
+
 # Run Snowflake checks
 weiser run examples/snowflake.yaml -v
 
 # Compile checks only (validation)
 weiser compile examples/example.yaml -v
 
+# Compile with custom .env file
+weiser compile examples/example.yaml -v --env-file /path/to/custom.env
+
 # Generate sample data for a specific check
 weiser sample examples/example.yaml --check "check_name" -v
+
+# Generate sample data with custom .env file
+weiser sample examples/example.yaml --check "check_name" -v --env-file /path/to/custom.env
 
 # Skip export to S3 (local development)
 weiser run examples/example.yaml -v -s
@@ -137,6 +146,12 @@ The project uses PDM for dependency management. Key dependencies include:
 weiser will read the .env file and replace the variables in the configuration.
 Environment variables already defined in your system can also be used.
 They are available in the configuration as `{{VARIABLE_NAME}}`. Do not use `${VARIABLE_NAME}` syntax.
+
+By default, weiser looks for a `.env` file in the current directory. You can specify a custom path using the `--env-file` or `-e` parameter:
+
+```bash
+weiser run config.yaml --env-file /path/to/custom.env
+```
 
 ### Example Configuration (`examples/example.yaml`)
 
