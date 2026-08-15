@@ -204,10 +204,103 @@ class MetricStore(BaseModel):
         use_enum_values = True
 
 
+class AgentFramework(str, Enum):
+    pydantic_ai = "pydantic_ai"
+    # strands = "strands"  # planned, not implemented yet
+
+
+class SemanticLayerType(str, Enum):
+    cube = "cube"
+    generic_sql = "generic_sql"
+    # snowflake_semantic_view = "snowflake_semantic_view"  # planned, not implemented yet
+
+
+class AgentVariant(BaseModel):
+    """A declaratively-configured agent shape ("arm"). `entrypoint` is a dotted path to
+    a factory function written once per agent family; every other field is a knob the
+    harness passes into that factory so that variants of the same agent are pure config.
+    """
+
+    name: str
+    framework: AgentFramework
+    entrypoint: str
+    model: Optional[str] = None
+    system_prompt: Optional[str] = None
+    tools: Optional[List[str]] = None
+    model_settings: Optional[dict] = None
+    max_turns: int = 40
+    extra: Optional[dict] = None
+
+
+class SemanticLayerConfig(BaseModel):
+    name: str
+    type: SemanticLayerType
+    datasource: str
+    meta_api_url: Optional[str] = None
+    meta_api_token: Optional[SecretStr] = None
+
+    class Config:
+        use_enum_values = True
+
+
+class ReferenceValue(BaseModel):
+    metric: str
+    expected: float
+    tolerance_pct: float = 0.0
+    widget_index: Optional[int] = None
+
+
+class EvalGolden(BaseModel):
+    """A single test case / "seed" (agentic-sql-mini's terminology). Declared inline in
+    an EvalSuite or loaded from an external YAML/JSONL golden file."""
+
+    id: str
+    input: str
+    split: Literal["train", "held_out"] = "train"
+    level: Literal["easy", "hard"] = "easy"
+    source: Literal["hand_written", "synthetic", "production"] = "hand_written"
+    reference_values: Optional[List[ReferenceValue]] = None
+    reference_answer_text: Optional[str] = None
+    reference_source: Optional[
+        Literal["human_verified", "independent_query", "unverified"]
+    ] = None
+    expected_views: Optional[List[str]] = None
+
+
+class MetricConfig(BaseModel):
+    """Declarative metric selection/configuration, resolved via MetricFactory."""
+
+    type: str
+    name: Optional[str] = None
+    threshold: float = 0.5
+    params: Optional[dict] = None
+
+
+class EvalArm(BaseModel):
+    """A named pairing of an agent variant with a semantic layer — one point in a
+    suite's comparison."""
+
+    name: str
+    agent_variant: str
+    semantic_layer: str
+
+
+class EvalSuite(BaseModel):
+    name: str
+    arms: List[EvalArm]
+    golden_set: Optional[str] = None
+    goldens: Optional[List[EvalGolden]] = None
+    metrics: List[MetricConfig]
+    dq_scope: Optional[List[str]] = None
+
+
 class BaseConfig(BaseModel):
     version: Optional[Version] = Version.v1
-    checks: List[Check]
-    datasources: List[AnyDatasource]
+    checks: List[Check] = []
+    datasources: List[AnyDatasource] = []
     includes: Optional[List[str]] = None
     connections: Optional[List[MetricStore]] = [MetricStore()]
     slack_url: Optional[str] = None
+    agent_variants: Optional[List[AgentVariant]] = None
+    semantic_layers: Optional[List[SemanticLayerConfig]] = None
+    eval_suites: Optional[List[EvalSuite]] = None

@@ -1,13 +1,17 @@
 import pytest
 import tempfile
 import os
-from unittest.mock import Mock, MagicMock
+from datetime import datetime
+from unittest.mock import AsyncMock, Mock, MagicMock
 from sqlalchemy import create_engine
 from sqlalchemy.engine import Engine
 
 from weiser.drivers.base import BaseDriver
 from weiser.drivers.metric_stores.duckdb import DuckDBMetricStore
 from weiser.loader.models import Datasource, MetricStore, DBType, MetricStoreType
+from weiser.evals.adapters.base import AgentAdapter
+from weiser.evals.models import AgentTrace
+from weiser.evals.semantic_layer.base import SchemaCatalog, SchemaView, SemanticLayerAdapter
 
 
 @pytest.fixture
@@ -69,6 +73,43 @@ def sample_anomaly_data():
         (80.0, -0.3),   # value, z_score
         (90.0, 0.1),    # value, z_score
     ]
+
+
+@pytest.fixture
+def mock_semantic_layer():
+    """Mock SemanticLayerAdapter returning a canned single-view schema catalog."""
+    adapter = Mock(spec=SemanticLayerAdapter)
+    catalog = SchemaCatalog(
+        views={"merchants": SchemaView(name="merchants", members={"id", "name", "country"})},
+        has_semantics=False,
+        fetched_at=datetime.now(),
+    )
+    adapter.get_schema = Mock(return_value=catalog)
+    adapter.execute_query = Mock(return_value=[{"cnt": 3}])
+    adapter.get_freshness = Mock(return_value=None)
+    return adapter
+
+
+@pytest.fixture
+def mock_agent_adapter():
+    """Mock AgentAdapter returning a canned, correct AgentTrace regardless of input."""
+    adapter = Mock(spec=AgentAdapter)
+    adapter.build = Mock(return_value=object())
+    adapter.run = AsyncMock(
+        return_value=AgentTrace(
+            question="How many merchants are there?",
+            tool_calls=[],
+            predicted_sqls=["SELECT COUNT(*) AS cnt FROM merchants"],
+            final_answer="There are 3 merchants.",
+            query_results=[{"cnt": 3}],
+            hit_limit=False,
+            elapsed_s=0.1,
+            cost_usd=0.01,
+            prompt_tokens=100,
+            completion_tokens=20,
+        )
+    )
+    return adapter
 
 
 @pytest.fixture(autouse=True)
