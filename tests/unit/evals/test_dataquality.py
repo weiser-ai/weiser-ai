@@ -1,7 +1,7 @@
 from datetime import datetime
 from unittest.mock import Mock
 
-from weiser.evals.dataquality import attribute_failure, build_dq_context
+from weiser.evals.dataquality import attribute_failure, build_dq_context, known_issue_hints
 from weiser.evals.models import CriterionScore, DQContext
 from weiser.loader.models import Check, CheckType, Condition
 
@@ -98,6 +98,30 @@ class TestBuildDQContext:
         )
         assert ctx.has_failing_dq is True
         mock_metric_store.insert_results.assert_called()
+
+
+class TestKnownIssueHints:
+    def test_failing_check_produces_a_hint(self, mock_driver, mock_metric_store):
+        check = _check()
+        mock_metric_store.get_metrics_for_check = Mock(
+            return_value=[Mock(success=False, actual_value=3, run_time=datetime.now())]
+        )
+        hints = known_issue_hints([check], {"local_db": mock_driver}, mock_metric_store)
+        assert "merchants" in hints
+        assert "merchants_not_empty" in hints["merchants"][0]
+
+    def test_passing_check_produces_no_hint(self, mock_driver, mock_metric_store):
+        check = _check()
+        mock_metric_store.get_metrics_for_check = Mock(
+            return_value=[Mock(success=True, actual_value=300, run_time=datetime.now())]
+        )
+        hints = known_issue_hints([check], {"local_db": mock_driver}, mock_metric_store)
+        assert hints == {}
+
+    def test_check_with_no_configured_datasource_is_skipped(self, mock_metric_store):
+        check = _check()
+        hints = known_issue_hints([check], {}, mock_metric_store)
+        assert hints == {}
 
 
 class TestAttributeFailure:

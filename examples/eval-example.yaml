@@ -7,8 +7,14 @@
 # Validate the config without running anything:
 #   weiser eval-compile examples/eval-example.yaml --suite lookup_tool_ablation
 #
-# Run it (train split, so it's safe to iterate on):
-#   weiser eval examples/eval-example.yaml --suite lookup_tool_ablation --split train -v
+# Run it (train split, so it's safe to iterate on), --repeats prints per-question variance:
+#   weiser eval examples/eval-example.yaml --suite lookup_tool_ablation --split train --repeats 3 -v
+#
+# Generate more train questions from the schema (review before promoting to held_out):
+#   weiser eval-synth examples/eval-example.yaml --semantic-layer local_sl --out examples/eval_synthetic.yaml
+#
+# Gate a candidate run against a saved baseline in CI:
+#   weiser eval-gate --candidate <run>.jsonl --baseline <baseline>.jsonl --arm baseline --max-regression 3.0
 
 version: 1
 
@@ -85,3 +91,15 @@ eval_suites:
       - type: step_efficiency
         threshold: 0.5
       - type: hit_limit
+      # LLM-judge metric (see weiser/evals/metrics/presets.py for this and two more
+      # ready-made shapes: answer_correctness_metric_config, groundedness_metric_config).
+      # Costs a real LLM call per question -- comment out for a fully deterministic,
+      # zero-cost run.
+      - type: llm_judge
+        name: sql_soundness
+        threshold: 0.5
+        params:
+          evaluation_params: [input, predicted_sqls]
+          criteria: >
+            Given the question, is the submitted SQL structurally sound and a plausible
+            way to answer it? Do not penalize style choices.

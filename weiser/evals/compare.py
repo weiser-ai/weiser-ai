@@ -138,6 +138,48 @@ def print_scorecard(path: str, arm_names: List[str]) -> None:
         print_pairwise(summaries, arm_names)
 
 
+def per_question_variance(rows: List[dict], arm: str) -> Dict[str, dict]:
+    """Mirrors eval_harness_improvement_spec.md's FIX-7: pure aggregation over data
+    already collected via `--repeats N`, no new instrumentation. A question whose score
+    swings widely across identical reps is telling you something -- prompt ambiguity, a
+    genuinely hard case, or judge noise -- well before it shows up as a mysterious
+    regression in a later comparison."""
+    arm_rows = _arm_rows(rows, arm)
+    by_golden: Dict[str, List[float]] = defaultdict(list)
+    for r in arm_rows:
+        by_golden[r["result"]["golden_id"]].append(r["result"]["overall_score"])
+
+    out = {}
+    for golden_id, scores in by_golden.items():
+        if len(scores) > 1:
+            mean = sum(scores) / len(scores)
+            variance = sum((s - mean) ** 2 for s in scores) / len(scores)
+            out[golden_id] = {"mean": mean, "std": variance**0.5, "n": len(scores)}
+    return out
+
+
+def print_variance_report(path: str, arm_names: List[str]) -> None:
+    rows = load_result_rows(path)
+    for arm in arm_names:
+        variance = per_question_variance(rows, arm)
+        if not variance:
+            continue
+        table = Table(
+            "Golden ID", "Mean", "Std Dev", "N", title=f"Repeat-run variance -- arm '{arm}'"
+        )
+        for golden_id, stats in sorted(variance.items(), key=lambda kv: -kv[1]["std"]):
+            style = None
+            if stats["std"] > 0.25:
+                style = "red"
+            elif stats["std"] > 0.15:
+                style = "yellow"
+            table.add_row(
+                golden_id, f"{stats['mean']:.2f}", f"{stats['std']:.2f}", str(stats["n"]),
+                style=style,
+            )
+        console.print(table)
+
+
 def print_pairwise(summaries: dict, arm_names: List[str]) -> None:
     baseline = arm_names[0]
     baseline_summary = summaries[baseline]

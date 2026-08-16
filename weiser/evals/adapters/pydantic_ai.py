@@ -68,10 +68,10 @@ class PydanticAIAdapter(AgentAdapter):
         usage = result.usage if result is not None else None
         final_answer = state.final_answer
         if final_answer is None and result is not None:
+            # AgentRunResult's parsed output lives on `.output`, not `.response`
+            # (`.response` exists too, but returns the raw last ModelResponse message).
             final_answer = (
-                result.response
-                if isinstance(result.response, str)
-                else str(result.response)
+                result.output if isinstance(result.output, str) else str(result.output)
             )
 
         predicted_sqls = [

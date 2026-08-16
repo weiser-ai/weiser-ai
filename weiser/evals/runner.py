@@ -35,6 +35,7 @@ def _write_flat_row(
     datasource_name: str,
     golden_id: str,
     arm_name: str,
+    rep: int,
     dq_context,
     overall_score: float,
     run_id: str,
@@ -42,16 +43,17 @@ def _write_flat_row(
     final_sql: Optional[str],
     threshold: float,
 ) -> None:
-    """One flat row per (golden, arm) into weiser's existing metrics table, so eval
+    """One flat row per (golden, arm, rep) into weiser's existing metrics table, so eval
     results show up in the existing dashboard with zero dashboard changes. The richer
     per-criterion / per-arm structure lives in the JSONL trace substrate instead --
     cramming it into this table would need a schema migration this phase deliberately
     defers (see docs/eval_plan.md)."""
     success = overall_score >= threshold
+    rep_suffix = f"#{rep}" if rep else ""
     metric_store.insert_results(
         {
-            "check_id": f"{golden_id}::{arm_name}",
-            "name": f"{golden_id}[{arm_name}]",
+            "check_id": f"{golden_id}::{arm_name}{rep_suffix}",
+            "name": f"{golden_id}[{arm_name}]{rep_suffix}",
             "datasource": datasource_name,
             "dataset": ",".join(dq_context.touched_datasets) or golden_id,
             "actual_value": overall_score,
@@ -88,6 +90,7 @@ async def run_eval_suite(
     split: Optional[str] = None,
     dq_mode: Literal["live", "latest"] = "latest",
     results_dir: str = "eval_results",
+    repeats: int = 1,
     verbose: bool = False,
 ) -> "EvalRunOutcome":
     agent_variants = {v.name: v for v in (config.agent_variants or [])}
@@ -111,7 +114,7 @@ async def run_eval_suite(
     with Progress(transient=False) as progress:
         task = progress.add_task(
             f"[cyan]Running eval suite '{suite.name}'",
-            total=len(suite.arms) * len(goldens),
+            total=len(suite.arms) * len(goldens) * repeats,
         )
         for arm in suite.arms:
             variant = agent_variants.get(arm.agent_variant)
@@ -141,64 +144,67 @@ async def run_eval_suite(
 
             arm_rows: List[EvalResultRow] = []
             for golden in goldens:
-                state = ToolsetState()
-                tools = build_toolset(sl_adapter, state, allowed_tools)
-                built_agent = agent_adapter.build(variant, tools)
-                trace = await agent_adapter.run(
-                    built_agent, golden.input, state, variant.max_turns
-                )
+                for rep in range(repeats):
+                    state = ToolsetState()
+                    tools = build_toolset(sl_adapter, state, allowed_tools)
+                    built_agent = agent_adapter.build(variant, tools)
+                    trace = await agent_adapter.run(
+                        built_agent, golden.input, state, variant.max_turns
+                    )
 
-                test_case = EvalTestCase(
-                    golden=golden,
-                    arm=arm.name,
-                    trace=trace,
-                    schema_catalog=schema_catalog,
-                )
-                criteria = [await metric.a_measure(test_case) for metric in metrics]
-                overall = _overall_score(criteria)
+                    test_case = EvalTestCase(
+                        golden=golden,
+                        arm=arm.name,
+                        trace=trace,
+                        schema_catalog=schema_catalog,
+                    )
+                    criteria = [await metric.a_measure(test_case) for metric in metrics]
+                    overall = _overall_score(criteria)
 
-                dq_context = build_dq_context(
-                    trace.predicted_sqls,
-                    config.checks,
-                    connections,
-                    metric_store,
-                    run_id,
-                    dq_scope=suite.dq_scope,
-                    mode=dq_mode,
-                    verbose=verbose,
-                )
-                attribution = attribute_failure(
-                    criteria, dq_context, overall, threshold=default_threshold
-                )
-                run_time = datetime.now()
-                row = EvalResultRow(
-                    golden_id=golden.id,
-                    suite=suite.name,
-                    arm=arm.name,
-                    level=golden.level,
-                    split=golden.split,
-                    criteria=criteria,
-                    dq_context=dq_context,
-                    failure_attribution=attribution,
-                    overall_score=overall,
-                    run_id=run_id,
-                    run_time=run_time,
-                )
-                _write_flat_row(
-                    metric_store,
-                    sl_config.datasource,
-                    golden.id,
-                    arm.name,
-                    dq_context,
-                    overall,
-                    run_id,
-                    run_time,
-                    trace.predicted_sqls[-1] if trace.predicted_sqls else None,
-                    default_threshold,
-                )
-                _append_trace_jsonl(results_path, row, trace)
-                arm_rows.append(row)
-                progress.update(task, advance=1)
+                    dq_context = build_dq_context(
+                        trace.predicted_sqls,
+                        config.checks,
+                        connections,
+                        metric_store,
+                        run_id,
+                        dq_scope=suite.dq_scope,
+                        mode=dq_mode,
+                        verbose=verbose,
+                    )
+                    attribution = attribute_failure(
+                        criteria, dq_context, overall, threshold=default_threshold
+                    )
+                    run_time = datetime.now()
+                    row = EvalResultRow(
+                        golden_id=golden.id,
+                        suite=suite.name,
+                        arm=arm.name,
+                        rep=rep,
+                        level=golden.level,
+                        split=golden.split,
+                        criteria=criteria,
+                        dq_context=dq_context,
+                        failure_attribution=attribution,
+                        overall_score=overall,
+                        run_id=run_id,
+                        run_time=run_time,
+                    )
+                    _write_flat_row(
+                        metric_store,
+                        sl_config.datasource,
+                        golden.id,
+                        arm.name,
+                        rep,
+                        dq_context,
+                        overall,
+                        run_id,
+                        run_time,
+                        trace.predicted_sqls[-1] if trace.predicted_sqls else None,
+                        default_threshold,
+                    )
+                    _append_trace_jsonl(results_path, row, trace)
+                    arm_rows.append(row)
+                    progress.update(task, advance=1)
             results_by_arm[arm.name] = arm_rows
 
     return EvalRunOutcome(results_by_arm=results_by_arm, results_path=results_path)

@@ -595,32 +595,63 @@ judge_uncertain`), and — when 2+ arms — the `compare.py` pairwise delta tabl
 
 ## Phased roadmap
 
-**Phase 1 (this implementation pass, if approved):** `weiser/evals/` module skeleton
-including the full YAML-first config surface (`AgentVariant`, `EvalArm`, `EvalSuite`,
-`MetricConfig`, inline/external `EvalGolden`), `CubeSemanticLayer` +
-`GenericSQLSemanticLayer`, `PydanticAIAdapter` (both usage modes), Phase-1 deterministic
-metrics via `MetricFactory`, the DQ confounding + attribution layer wired to real
-`CheckFactory` checks, `EvalDataset` loading, arm-aware `run_eval_suite`, `compare.py`
-(including the batching-changes lint), `weiser eval` / `weiser eval-compile` CLI commands,
-dual result storage. Config model additions in `weiser/loader/models.py` +
-`update_namespace` extension in `weiser/loader/config.py`.
+**Phase 1 (shipped):** `weiser/evals/` module skeleton including the full YAML-first
+config surface (`AgentVariant`, `EvalArm`, `EvalSuite`, `MetricConfig`, inline/external
+`EvalGolden`), `CubeSemanticLayer` + `GenericSQLSemanticLayer`, `PydanticAIAdapter` (both
+usage modes), deterministic metrics via `MetricFactory`, the DQ confounding + attribution
+layer wired to real `CheckFactory` checks, `EvalDataset` loading, arm-aware
+`run_eval_suite`, `compare.py` (including the batching-changes lint), `weiser eval` /
+`weiser eval-compile` CLI commands, dual result storage. Config model additions in
+`weiser/loader/models.py` + `update_namespace` extension in `weiser/loader/config.py`.
+Along the way, fixed a real bug found while building Phase 2: `PydanticAIAdapter` was
+reading `AgentRunResult.response` (which returns the raw last internal `ModelResponse`)
+instead of `.output` (the actual parsed/structured result) — only ever masked in Phase 1
+testing because every scripted agent happened to finish via `submit_answer`, never via a
+plain-text response.
 
-**Phase 2 (follow-up):** `metrics/llm_judge.py` (YAML-configured `GEval`-style judge +
-judge-prompt versioning), pre-built judge presets (AnswerCorrectness/SQLSoundness/
-Groundedness) expressible as `MetricConfig` templates, `synthesizer.py` (schema-driven
-synthetic golden generation biased toward datasets with open/recent DQ failures — reusing
-`dataquality.py`'s own DQContext instead of a hand-maintained YAML registry), repeat-run
-variance reporting (spec FIX-7), train-set failure export tooling supporting the
-playbook's Step 5 hill-climb loop (human-in-the-loop; not full automation).
+**Phase 2 (shipped):** everything scoped for "close the DeepEval gap" in one pass —
+- `metrics/llm_judge.py`: a generic `LLMJudgeMetric`, the YAML-native generalization of
+  DeepEval's `GEval` (`criteria`/`evaluation_steps`/`evaluation_params` live entirely in
+  `MetricConfig.params`), backed by a real `pydantic_ai.Agent` with structured output
+  (`JudgeVerdict`). Judge-prompt versioning (a hash of the rendered system prompt,
+  stamped on every `CriterionScore.judge_prompt_version`) is built in from the start —
+  spec FIX-3's lesson applied up front rather than retrofitted.
+- `metrics/presets.py`: `answer_correctness_metric_config()` / `sql_soundness_metric_config()`
+  / `groundedness_metric_config()` — the three judge criteria from
+  `eval_harness_improvement_spec.md`, expressed as `MetricConfig` builders (i.e. YAML
+  shapes), not new metric classes.
+- `synthesizer.py` + `dataquality.known_issue_hints()`: schema-driven synthetic golden
+  generation (spec FIX-8 / DeepEval's Synthesizer) that biases questions toward views
+  with a currently-failing weiser DQ check, reusing live check results instead of a
+  hand-maintained `known_data_issues.yaml`. `weiser eval-synth` writes a `{goldens:
+  [...]}` YAML file, tagged `source=synthetic, split=train`, ready to use as a suite's
+  `golden_set` after human review.
+- Repeat-run variance reporting (spec FIX-7): `run_eval_suite(..., repeats=N)` tags every
+  row with `rep`, and `compare.py::per_question_variance` / `print_variance_report`
+  surface per-golden mean/std across reps. `weiser eval --repeats N` prints the variance
+  table automatically.
+- `gate.py` + `weiser eval-gate` (spec FIX-6): compares a candidate JSONL run against a
+  baseline for one arm, fails on accuracy regression beyond `--max-regression` pp or any
+  hit-limit-rate increase, and **excludes `data_quality`-attributed rows from the
+  regression delta by default** (reporting the excluded count) so a live DQ incident
+  can't fail an unrelated agent PR.
+- `calibrate.py` + `weiser eval-calibrate` (spec FIX-4): scores a human-labeled
+  calibration set (`turns.jsonl` + `human_labels.jsonl`) with a suite's `llm_judge`
+  metric, reports MAE and Spearman correlation (a small pure-Python rank-correlation
+  implementation — no new `scipy` dependency for one statistic), and exits non-zero when
+  the judge isn't yet trustworthy for that criterion/prompt version.
 
-**Phase 3 (future):** `weiser eval-gate` CI regression command (spec FIX-6, excludes
-`data_quality`-attributed rows from the regression delta), judge calibration set +
-`calibrate_judge` command (spec FIX-4), a dedicated `agent_eval_results` metric-store
-table + weiser-ui dashboard views (arm comparison, DQ-attribution breakdown — richer than
-the flat summary row Phase 1 ships with), the `SnowflakeSemanticViewsAdapter`, the
-`StrandsAdapter`, and production-trace mining for the playbook's Step 7 outer loop
-(explicitly "still in-flight work" even at MotherDuck — aspirational, not a near-term
-commitment).
+Train-set failure export tooling for the playbook's Step 5 hill-climb loop was
+**dropped from this phase's scope** — the JSONL trace substrate + `--repeats` variance
+data already give a human everything needed to read failures by hand; a dedicated export
+command can follow once real hill-climbing sessions show what shape it should take.
+
+**Phase 3 (next, per user direction — dashboard + additional adapters):** a dedicated
+`agent_eval_results` metric-store table + weiser-ui dashboard views (arm comparison,
+DQ-attribution breakdown, variance — richer than the flat summary row Phase 1 ships
+with), the `SnowflakeSemanticViewsAdapter`, the `StrandsAdapter`, and production-trace
+mining for the playbook's Step 7 outer loop (explicitly "still in-flight work" even at
+MotherDuck — aspirational, not a near-term commitment).
 
 ---
 
@@ -660,14 +691,58 @@ Mirror existing conventions in `tests/unit/` and `tests/fixtures/config_fixtures
   suite against a fully mocked stack, asserting both arms' dual-write happens and that
   `compare.py` produces a pairwise delta.
 
-**Manual verification**, once implemented:
+**Phase 1 manual verification (done):**
 1. `weiser eval-compile examples/eval-example.yaml --suite <name>` — validates the new
    config sections parse, adapters/variants resolve, and the batching-changes lint runs.
 2. `weiser eval examples/eval-example.yaml --suite <name> --split train -v` against a
    local DuckDB example dataset with `GenericSQLSemanticLayer`, a 2-arm suite (tool
    ablation), and a trivial stub `AgentAdapter` factory — proves the full YAML-to-CLI
    pipeline end-to-end without external infra.
-3. If a test Cube instance is available, repeat against `CubeSemanticLayer`. Optional/manual
-   if none exists in this environment — do not block Phase 1 completion on it.
-4. Confirm eval summary rows appear in the existing `weiser-ui` dashboard
+3. Cube instance verification deferred — optional/manual if one becomes available; not a
+   blocker.
+4. Confirmed eval summary rows appear in the existing `weiser-ui` dashboard
    (`weiser-ui/app.py`) without dashboard code changes.
+
+**Phase 2 tests (all shipped, offline via `pydantic_ai.models.function.FunctionModel` —
+no real LLM API calls needed to validate any of this):**
+- `tests/unit/evals/test_llm_judge.py` — structured-output scoring, score clamping,
+  `applicable_when` (skips the LLM call entirely when unmet), prompt-version stability
+  and change-detection, sync `measure()` wrapping `a_measure()`, and the three presets.
+- `tests/unit/evals/test_synthesizer.py` — per-view generation, `views` restriction,
+  DQ-hint injection into the prompt, unknown-view handling.
+- `tests/unit/evals/test_dataquality.py` (extended) — `known_issue_hints()`: a failing
+  check produces a hint, a passing one doesn't, an unconfigured datasource is skipped.
+- `tests/unit/evals/test_gate.py` — pass/fail on regression threshold, the
+  `data_quality`-exclusion behavior (including the "everything excluded → fail-safe, not
+  silent-pass" edge case), and hit-limit-rate regression as an independent failure mode.
+- `tests/unit/evals/test_calibrate.py` — `spearman_correlation()` against known-shape
+  inputs (perfect positive/negative, zero-variance, n<2), plus `calibrate_judge()`
+  end-to-end against scripted turns/labels (full agreement, disagreement, unlabeled
+  turns skipped, zero matching labels).
+- `tests/unit/test_main_eval_cli.py` — **new precedent**: the project had no CLI-layer
+  tests before this; added `typer.testing.CliRunner`-based tests for `eval-synth` and
+  `eval-calibrate` that patch only the LLM-calling entrypoint
+  (`weiser.main.generate_synthetic_goldens` / `weiser.main.calibrate_judge`) so schema
+  resolution, config parsing, YAML/JSON file I/O, and exit codes are exercised for real
+  against a live SQLite-backed semantic layer.
+
+**Phase 2 manual verification (done):**
+1. `weiser eval <config> --suite <name> --repeats N` against a deliberately-flaky stub
+   agent (randomly submits `SELECT COUNT(*) + 1` ~34% of the time) — confirmed
+   `reference_value_match` correctly ignores the free-text answer and scores the actual
+   `query_results`, that per-question variance renders (mean/std across reps), and that
+   `failure_attribution="agent"` (not `data_quality`, correctly, since no DQ check
+   covered the touched table in that scratch config).
+2. `weiser eval-gate --candidate <flaky run> --baseline <clean run>` — confirmed
+   exit-code 1 with the correct regression reason on a real 100%→60% drop, and exit-code
+   0 comparing a run against itself.
+3. Found and fixed a real Phase 1 bug in the process:
+   `PydanticAIAdapter` was reading `AgentRunResult.response` — which exists but returns
+   the raw last internal `ModelResponse` — instead of `.output`, the actual parsed
+   result. Phase 1's own tests never caught it because every scripted test agent
+   finished via `submit_answer` (so `state.final_answer` was already set and the buggy
+   fallback line never executed). Verified the fix with an agent that finishes via plain
+   text with no tool call.
+
+**Deferred to Phase 3:** dedicated `agent_eval_results` metric-store table + weiser-ui
+dashboard views, `SnowflakeSemanticViewsAdapter`, `StrandsAdapter`.

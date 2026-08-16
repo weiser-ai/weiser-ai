@@ -8,6 +8,7 @@ from weiser.evals.metrics.deterministic import (
     SchemaMembershipMetric,
     StepEfficiencyMetric,
 )
+from weiser.evals.metrics.llm_judge import LLMJudgeMetric
 from weiser.loader.models import MetricConfig
 
 METRIC_TYPE_MAP: Dict[str, Type[BaseEvalMetric]] = {
@@ -16,7 +17,7 @@ METRIC_TYPE_MAP: Dict[str, Type[BaseEvalMetric]] = {
     "reference_value_match": ReferenceValueMatchMetric,
     "step_efficiency": StepEfficiencyMetric,
     "hit_limit": HitLimitMetric,
-    # "llm_judge": LLMJudgeMetric,  # Phase 2
+    "llm_judge": LLMJudgeMetric,
 }
 
 

@@ -123,6 +123,35 @@ def build_dq_context(
     )
 
 
+def known_issue_hints(
+    checks: List[Check],
+    connections: dict,
+    metric_store,
+) -> "dict[str, List[str]]":
+    """For every configured check, look up its most recent stored result; if failing,
+    add a human-readable hint keyed by every dataset that check covers. Feeds
+    synthesizer.generate_synthetic_goldens's dq_hints, biasing synthetic questions
+    toward real messy edge cases -- reusing weiser's own live DQ checks as "known
+    quirks" instead of a hand-maintained known_data_issues.yaml registry."""
+    hints: "dict[str, List[str]]" = {}
+    for check in checks:
+        for datasource_name in _as_list(check.datasource):
+            if datasource_name not in connections:
+                continue
+            for dataset in _as_list(check.dataset):
+                check_id = _generate_check_id(datasource_name, check.name, dataset)
+                recent = metric_store.get_metrics_for_check(check_id, limit=5)
+                if not recent:
+                    continue
+                latest = max(recent, key=lambda r: r.run_time)
+                if latest.success is False:
+                    hints.setdefault(dataset.lower(), []).append(
+                        f"{check.name} ({check.type}) is currently failing "
+                        f"(actual_value={latest.actual_value})"
+                    )
+    return hints
+
+
 def attribute_failure(
     criteria: List[CriterionScore],
     dq_context: DQContext,

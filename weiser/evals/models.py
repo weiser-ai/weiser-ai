@@ -33,6 +33,7 @@ class CriterionScore(BaseModel):
     score: Optional[float] = None
     applicable: bool = True
     rationale: Optional[str] = None
+    judge_prompt_version: Optional[str] = None
 
 
 class DQContext(BaseModel):
@@ -56,6 +57,7 @@ class EvalResultRow(BaseModel):
     golden_id: str
     suite: str
     arm: str
+    rep: int = 0
     level: Literal["easy", "hard"] = "easy"
     split: Literal["train", "held_out"] = "train"
     criteria: List[CriterionScore] = []
