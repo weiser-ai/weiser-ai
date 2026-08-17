@@ -208,6 +208,15 @@ def eval(
     context = pre_run_config(config, verbose=verbose)
     base_config: BaseConfig = context["config"]
 
+    if dq_mode not in ("latest", "live"):
+        print(
+            f"[bold red]Error:[/bold red] invalid --dq-mode '{dq_mode}' (expected 'latest' or 'live')."
+        )
+        raise typer.Exit(1)
+    if repeats < 1:
+        print(f"[bold red]Error:[/bold red] --repeats must be >= 1 (got {repeats}).")
+        raise typer.Exit(1)
+
     eval_suites = {s.name: s for s in (base_config.eval_suites or [])}
     if suite not in eval_suites:
         print(f"[bold red]Error:[/bold red] eval suite '{suite}' not found in config.")

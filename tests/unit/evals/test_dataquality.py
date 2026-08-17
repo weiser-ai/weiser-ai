@@ -21,7 +21,7 @@ class TestBuildDQContext:
     def test_latest_mode_finds_failing_check(self, mock_driver, mock_metric_store):
         check = _check()
         fake_record = Mock(success=False, actual_value=3, run_time=datetime.now())
-        mock_metric_store.get_metrics_for_check = Mock(return_value=[fake_record])
+        mock_metric_store.get_latest_metrics_for_check = Mock(return_value=[fake_record])
 
         ctx = build_dq_context(
             predicted_sqls=["SELECT COUNT(*) FROM merchants"],
@@ -37,7 +37,7 @@ class TestBuildDQContext:
 
     def test_latest_mode_no_history_is_clean(self, mock_driver, mock_metric_store):
         check = _check(threshold=0)
-        mock_metric_store.get_metrics_for_check = Mock(return_value=[])
+        mock_metric_store.get_latest_metrics_for_check = Mock(return_value=[])
 
         ctx = build_dq_context(
             ["SELECT COUNT(*) FROM merchants"],
@@ -52,7 +52,7 @@ class TestBuildDQContext:
 
     def test_untouched_dataset_is_not_confounding_evidence(self, mock_driver, mock_metric_store):
         check = _check(name="other_check", dataset="orders")
-        mock_metric_store.get_metrics_for_check = Mock(
+        mock_metric_store.get_latest_metrics_for_check = Mock(
             return_value=[Mock(success=False, actual_value=0, run_time=datetime.now())]
         )
 
@@ -66,12 +66,14 @@ class TestBuildDQContext:
         )
         assert ctx.has_failing_dq is False
         assert ctx.dq_results == []
+        mock_metric_store.get_latest_metrics_for_check.assert_not_called()
 
-    def test_latest_mode_picks_most_recent_result(self, mock_driver, mock_metric_store):
+    def test_latest_mode_uses_stored_run_not_stale_history(self, mock_driver, mock_metric_store):
         check = _check()
-        older = Mock(success=False, actual_value=3, run_time=datetime(2026, 1, 1))
-        newer = Mock(success=True, actual_value=200, run_time=datetime(2026, 6, 1))
-        mock_metric_store.get_metrics_for_check = Mock(return_value=[older, newer])
+        # store returns only the most recent run's rows; a passing latest run is clean
+        # even if older runs failed
+        latest = Mock(success=True, actual_value=200, run_time=datetime(2026, 6, 1))
+        mock_metric_store.get_latest_metrics_for_check = Mock(return_value=[latest])
 
         ctx = build_dq_context(
             ["SELECT COUNT(*) FROM merchants"],
@@ -83,6 +85,64 @@ class TestBuildDQContext:
         )
         assert ctx.has_failing_dq is False
         assert ctx.dq_results[0]["success"] is True
+
+    def test_latest_mode_sql_expression_dataset_uses_stored_table_names(
+        self, mock_driver, mock_metric_store
+    ):
+        check = Check(
+            name="join_check",
+            dataset="SELECT * FROM merchants m JOIN orders o ON m.id = o.merchant_id",
+            datasource="local_db",
+            type=CheckType.row_count,
+            condition=Condition.gt,
+            threshold=0,
+        )
+        fake_record = Mock(success=False, actual_value=0, run_time=datetime.now())
+        mock_metric_store.get_latest_metrics_for_check = Mock(return_value=[fake_record])
+
+        ctx = build_dq_context(
+            ["SELECT COUNT(*) FROM merchants"],
+            [check],
+            {"local_db": mock_driver},
+            mock_metric_store,
+            "run1",
+            mode="latest",
+        )
+        # check_id_dataset stored by BaseCheck.append_result is the joined table names,
+        # not the raw SQL expression
+        mock_metric_store.get_latest_metrics_for_check.assert_called_once_with(
+            "join_check", "merchants AS m_orders AS o", "local_db"
+        )
+        assert ctx.has_failing_dq is True
+
+    def test_latest_mode_dimension_check_fails_if_any_row_fails(
+        self, mock_driver, mock_metric_store
+    ):
+        check = Check(
+            name="status_check",
+            dataset="merchants",
+            datasource="local_db",
+            type=CheckType.row_count,
+            condition=Condition.gt,
+            threshold=0,
+            dimensions=["status"],
+        )
+        passing = Mock(success=True, actual_value=10, run_time=datetime(2026, 6, 1))
+        failing = Mock(success=False, actual_value=0, run_time=datetime(2026, 6, 1))
+        mock_metric_store.get_latest_metrics_for_check = Mock(
+            return_value=[passing, failing]
+        )
+
+        ctx = build_dq_context(
+            ["SELECT COUNT(*) FROM merchants"],
+            [check],
+            {"local_db": mock_driver},
+            mock_metric_store,
+            "run1",
+            mode="latest",
+        )
+        assert ctx.has_failing_dq is True
+        assert ctx.dq_results[0]["actual_value"] == 0
 
     def test_live_mode_runs_check_now(self, mock_driver, mock_metric_store):
         check = _check()
@@ -103,7 +163,7 @@ class TestBuildDQContext:
 class TestKnownIssueHints:
     def test_failing_check_produces_a_hint(self, mock_driver, mock_metric_store):
         check = _check()
-        mock_metric_store.get_metrics_for_check = Mock(
+        mock_metric_store.get_latest_metrics_for_check = Mock(
             return_value=[Mock(success=False, actual_value=3, run_time=datetime.now())]
         )
         hints = known_issue_hints([check], {"local_db": mock_driver}, mock_metric_store)
@@ -112,7 +172,7 @@ class TestKnownIssueHints:
 
     def test_passing_check_produces_no_hint(self, mock_driver, mock_metric_store):
         check = _check()
-        mock_metric_store.get_metrics_for_check = Mock(
+        mock_metric_store.get_latest_metrics_for_check = Mock(
             return_value=[Mock(success=True, actual_value=300, run_time=datetime.now())]
         )
         hints = known_issue_hints([check], {"local_db": mock_driver}, mock_metric_store)
@@ -122,6 +182,27 @@ class TestKnownIssueHints:
         check = _check()
         hints = known_issue_hints([check], {}, mock_metric_store)
         assert hints == {}
+
+    def test_sql_expression_dataset_hints_keyed_by_table_name(
+        self, mock_driver, mock_metric_store
+    ):
+        check = Check(
+            name="join_check",
+            dataset="SELECT * FROM merchants m JOIN orders o ON m.id = o.merchant_id",
+            datasource="local_db",
+            type=CheckType.row_count,
+            condition=Condition.gt,
+            threshold=0,
+        )
+        mock_metric_store.get_latest_metrics_for_check = Mock(
+            return_value=[Mock(success=False, actual_value=0, run_time=datetime.now())]
+        )
+        hints = known_issue_hints([check], {"local_db": mock_driver}, mock_metric_store)
+        # keyed by the underlying table names so the synthesizer's view lookup hits
+        assert set(hints.keys()) == {"merchants", "orders"}
+        mock_metric_store.get_latest_metrics_for_check.assert_called_once_with(
+            "join_check", "merchants AS m_orders AS o", "local_db"
+        )
 
 
 class TestAttributeFailure:

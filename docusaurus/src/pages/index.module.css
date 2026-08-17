@@ -29,6 +29,32 @@
   background-color: var(--ifm-color-emphasis-100);
 }
 
+.agentEvals {
+  padding: 4rem 0;
+  background-color: var(--ifm-background-color);
+}
+
+.agentEvals h2 {
+  margin-bottom: 1rem;
+  color: var(--ifm-color-primary);
+}
+
+.agentEvals pre {
+  background-color: var(--ifm-color-emphasis-200);
+  border-radius: 8px;
+  padding: 1.5rem;
+  margin: 1rem 0;
+  overflow-x: auto;
+  font-size: 0.85rem;
+  line-height: 1.4;
+}
+
+.agentEvals code {
+  color: var(--ifm-color-content);
+  background: none;
+  font-family: var(--ifm-font-family-monospace);
+}
+
 .codeExample h2 {
   margin-bottom: 1rem;
   color: var(--ifm-color-primary);
@@ -75,15 +101,18 @@
 }
 
 @media screen and (max-width: 996px) {
-  .codeExample {
+  .codeExample,
+  .agentEvals {
     padding: 2rem 0;
   }
-  
-  .codeExample .row {
+
+  .codeExample .row,
+  .agentEvals .row {
     flex-direction: column;
   }
-  
-  .codeExample pre {
+
+  .codeExample pre,
+  .agentEvals pre {
     font-size: 0.75rem;
   }
 }

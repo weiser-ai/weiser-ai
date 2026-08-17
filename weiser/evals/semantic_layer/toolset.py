@@ -1,10 +1,38 @@
 from dataclasses import dataclass
 from typing import Any, Callable, List, Optional, Set
 
+import sqlglot
+
 from weiser.evals.models import ToolCall
-from weiser.evals.semantic_layer.base import SemanticLayerAdapter
+from weiser.evals.semantic_layer.base import _READ_STATEMENTS, SemanticLayerAdapter
 
 STANDARD_TOOL_NAMES = ("list_views", "describe_view", "query", "submit_answer")
+
+_QUERY_ROW_LIMIT = 50
+
+
+def _cap_query_rows(sql: str, limit: int, dialect=None) -> str:
+    """Rewrite a read-only query so the engine materializes at most `limit` rows
+    instead of fetching the full result set and slicing it client-side.
+
+    An existing numeric LIMIT is capped rather than duplicated. SQL that cannot be
+    parsed, is not a select-family statement, or carries a non-literal LIMIT is
+    returned unchanged: the adapter's read-only validation still runs before
+    execution, and the client-side slice in query() remains the backstop."""
+    try:
+        statement = sqlglot.parse_one(sql.strip().rstrip(";"), read=dialect)
+    except Exception:  # noqa: BLE001 -- unparseable SQL falls back to the original query
+        return sql
+    if not isinstance(statement, _READ_STATEMENTS):
+        return sql
+    existing = statement.args.get("limit")
+    if existing is not None:
+        try:
+            if int(existing.expression.this) <= limit:
+                return sql
+        except (AttributeError, TypeError, ValueError):
+            return sql
+    return statement.limit(limit).sql(dialect=dialect)
 
 
 @dataclass
@@ -74,13 +102,14 @@ def build_toolset(
     async def query(sql: str) -> str:
         """Run a read-only SQL query against the semantic layer and return up to 50
         rows."""
+        capped_sql = _cap_query_rows(sql, _QUERY_ROW_LIMIT, adapter.get_dialect())
         try:
-            rows = adapter.execute_query(sql)
+            rows = adapter.execute_query(capped_sql)
         except Exception as e:  # noqa: BLE001 -- surfaced to the agent as tool output
             error_result = f"ERROR: {e}"
             state.record("query", {"sql": sql}, error_result)
             return error_result
-        preview = rows[:50]
+        preview = rows[:_QUERY_ROW_LIMIT]
         state.record("query", {"sql": sql}, preview)
         return "\n".join(str(row) for row in preview) if preview else "(no rows)"
 

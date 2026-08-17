@@ -103,17 +103,84 @@ checks:
   );
 }
 
+function AgentEvals() {
+  return (
+    <section className={styles.agentEvals}>
+      <div className="container">
+        <div className="row">
+          <div className="col col--6">
+            <h2>Agent Evals</h2>
+            <p>
+              Evaluate NL-to-SQL and BI agents the same way you define checks —
+              declaratively in YAML. Compare arms, score runs, and gate releases,
+              all in the same config file as your data quality checks.
+            </p>
+            <pre>
+              <code>{`# evals.yaml
+agent_variants:
+  - name: baseline
+    framework: pydantic_ai
+    entrypoint: myapp.eval_agents.build_bi_agent
+    tools: [list_views, describe_view, query, submit_answer]
+
+eval_suites:
+  - name: lookup_tool_ablation
+    arms:
+      - name: baseline
+        agent_variant: baseline
+        semantic_layer: local_sl
+    metrics:
+      - type: reference_value_match
+      - type: llm_judge
+        name: sql_soundness`}</code>
+            </pre>
+            <Link className="button button--outline button--secondary" to="/docs/evals">
+              Explore Agent Evals
+            </Link>
+          </div>
+          <div className="col col--6">
+            <h2>Evals-As-YAML</h2>
+            <p>
+              The experiment design — tools, prompts, models, and test cases — lives
+              entirely in YAML. Python is only needed for a one-time agent factory.
+            </p>
+            <div className={styles.llmFeatures}>
+              <div className={styles.feature}>
+                <strong>🧪 Arm Comparisons</strong>
+                <p>Ablate one variable at a time across arms sharing a golden set</p>
+              </div>
+              <div className={styles.feature}>
+                <strong>🔗 Data-Quality Attribution</strong>
+                <p>Weiser's own DQ checks are wired into eval scoring — a data incident is blamed on the data, not the agent</p>
+              </div>
+              <div className={styles.feature}>
+                <strong>⚖️ Deterministic + LLM-Judge Metrics</strong>
+                <p>Zero-cost checks alongside rubric-based judging, calibrated against human labels</p>
+              </div>
+              <div className={styles.feature}>
+                <strong>🚦 CI Regression Gating</strong>
+                <p>Gate candidate runs against a baseline before they ship</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 export default function Home() {
   const { siteConfig } = useDocusaurusContext();
   return (
     <Layout
       title={`${siteConfig.title} - Data Quality Framework`}
-      description="Enterprise-grade data quality framework with YAML configuration, LLM-friendly design, and advanced statistical validation"
+      description="Enterprise-grade data quality framework with YAML configuration, LLM-friendly design, agent evals, and advanced statistical validation"
     >
       <HomepageHeader />
       <main>
         <HomepageFeatures />
         <CodeExample />
+        <AgentEvals />
       </main>
     </Layout>
   );

@@ -87,6 +87,7 @@ def mock_semantic_layer():
     adapter.get_schema = Mock(return_value=catalog)
     adapter.execute_query = Mock(return_value=[{"cnt": 3}])
     adapter.get_freshness = Mock(return_value=None)
+    adapter.get_dialect = Mock(return_value=None)
     return adapter
 
 

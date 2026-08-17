@@ -1,5 +1,6 @@
 from typing import Any, List, Tuple, Optional
 from sqlmodel import SQLModel, Session, create_engine, select
+from sqlalchemy import and_, func, or_
 from sqlalchemy.engine import URL
 from sqlglot.expressions import Select
 from sqlglot.dialects import Postgres
@@ -134,6 +135,40 @@ class PostgresMetricStore:
 
             result = session.exec(statement)
             return list(result)
+
+    def get_latest_metrics_for_check(
+        self,
+        check_name: str,
+        dataset: str,
+        datasource: str,
+        limit: Optional[int] = None,
+    ) -> List[MetricRecord]:
+        """Get the metrics from the most recent run of a check, matched by
+        (datasource, dataset, name). Dimension/time-dimension checks store one row
+        per dimension value under the name '<check_name>_<dimension values>', so the
+        name is matched exactly or on prefix."""
+        check_matches = and_(
+            MetricRecord.datasource == datasource,
+            MetricRecord.dataset == dataset,
+            or_(
+                MetricRecord.name == check_name,
+                func.strpos(MetricRecord.name, f"{check_name}_") == 1,
+            ),
+        )
+        latest_run_id = (
+            select(MetricRecord.run_id)
+            .where(check_matches)
+            .order_by(MetricRecord.run_time.desc())
+            .limit(1)
+            .scalar_subquery()
+        )
+        with Session(self.engine) as session:
+            statement = select(MetricRecord).where(
+                check_matches, MetricRecord.run_id == latest_run_id
+            )
+            if limit:
+                statement = statement.limit(limit)
+            return list(session.exec(statement))
 
     def get_metrics_for_run(self, run_id: str) -> List[MetricRecord]:
         """Get all metrics for a specific run_id."""

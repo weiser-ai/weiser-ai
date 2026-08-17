@@ -1,6 +1,7 @@
-import hashlib
-
 from typing import List, Literal, Optional
+
+import sqlglot
+from sqlglot.expressions import Table
 
 from weiser.checks import CheckFactory
 from weiser.evals.models import CriterionScore, DQContext
@@ -10,19 +11,32 @@ from weiser.loader.models import Check
 FailureAttribution = Literal["clean", "agent", "data_quality", "judge_uncertain"]
 
 
-def _generate_check_id(datasource: str, check_name: str, dataset: str) -> str:
-    """Mirrors weiser.checks.base.BaseCheck.generate_check_id's hash exactly, without
-    needing a fully-built check instance just to look up an existing check_id."""
-    encode = lambda s: str(s).encode("utf-8")
-    m = hashlib.sha256()
-    m.update(encode(datasource))
-    m.update(encode(check_name))
-    m.update(encode(dataset))
-    return m.hexdigest()
-
-
 def _as_list(value) -> List[str]:
     return value if isinstance(value, list) else [value]
+
+
+def _stored_dataset(dataset: str) -> str:
+    """The dataset string BaseCheck.append_result stores and hashes: SQL-expression
+    datasets are stored under their joined table names (e.g. 'orders_customers'),
+    plain identifiers under the raw string. Mirrors weiser/checks/base.py
+    parse_dataset + append_result exactly, so lookups match what `weiser run` wrote."""
+    try:
+        tables = list(sqlglot.parse_one(dataset).find_all(Table))
+    except Exception:
+        return dataset
+    return "_".join(map(str, tables)) if tables else dataset
+
+
+def _dataset_table_names(dataset: str) -> List[str]:
+    """Plain lowercased table names a dataset references (the same granularity
+    extract_touched_datasets produces), for matching checks against touched datasets
+    and keying hints. Falls back to the raw string for plain identifiers."""
+    try:
+        tables = list(sqlglot.parse_one(dataset).find_all(Table))
+    except Exception:
+        tables = []
+    names = [t.name.lower() for t in tables if t.name]
+    return names or [dataset.lower()]
 
 
 def build_dq_context(
@@ -50,7 +64,11 @@ def build_dq_context(
     matching_checks = [
         check
         for check in checks
-        if {d.lower() for d in _as_list(check.dataset)} & touched
+        if any(
+            name in touched
+            for dataset in _as_list(check.dataset)
+            for name in _dataset_table_names(dataset)
+        )
     ]
 
     dq_results: List[dict] = []
@@ -97,22 +115,27 @@ def build_dq_context(
                         has_failing = True
             else:  # "latest"
                 for dataset in _as_list(check.dataset):
-                    check_id = _generate_check_id(datasource_name, check.name, dataset)
-                    recent = metric_store.get_metrics_for_check(check_id, limit=5)
+                    recent = metric_store.get_latest_metrics_for_check(
+                        check.name, _stored_dataset(dataset), datasource_name
+                    )
                     if not recent:
                         continue
-                    latest = max(recent, key=lambda r: r.run_time)
-                    success = latest.success
+                    failing = [r for r in recent if r.success is False]
+                    success = not failing
                     dq_results.append(
                         {
                             "check_name": check.name,
                             "dataset": dataset,
                             "success": success,
-                            "actual_value": latest.actual_value,
-                            "run_time": latest.run_time,
+                            "actual_value": (
+                                failing[0].actual_value
+                                if failing
+                                else recent[0].actual_value
+                            ),
+                            "run_time": max(r.run_time for r in recent),
                         }
                     )
-                    if success is False:
+                    if not success:
                         has_failing = True
 
     return DQContext(
@@ -139,15 +162,18 @@ def known_issue_hints(
             if datasource_name not in connections:
                 continue
             for dataset in _as_list(check.dataset):
-                check_id = _generate_check_id(datasource_name, check.name, dataset)
-                recent = metric_store.get_metrics_for_check(check_id, limit=5)
+                recent = metric_store.get_latest_metrics_for_check(
+                    check.name, _stored_dataset(dataset), datasource_name
+                )
                 if not recent:
                     continue
-                latest = max(recent, key=lambda r: r.run_time)
-                if latest.success is False:
-                    hints.setdefault(dataset.lower(), []).append(
+                failing = [r for r in recent if r.success is False]
+                if not failing:
+                    continue
+                for table in _dataset_table_names(dataset):
+                    hints.setdefault(table, []).append(
                         f"{check.name} ({check.type}) is currently failing "
-                        f"(actual_value={latest.actual_value})"
+                        f"(actual_value={failing[0].actual_value})"
                     )
     return hints
 

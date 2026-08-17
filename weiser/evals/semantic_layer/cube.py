@@ -74,3 +74,6 @@ class CubeSemanticLayer(SemanticLayerAdapter):
 
     def execute_query(self, sql: str) -> List[dict]:
         return execute_sql_via_driver(self.driver, sql)
+
+    def get_dialect(self):
+        return self.driver.dialect

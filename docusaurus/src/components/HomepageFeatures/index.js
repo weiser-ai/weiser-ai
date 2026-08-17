@@ -8,20 +8,24 @@ const FeatureList = [
     Img: require("@site/static/img/weiser-yaml.png").default,
     description: (
       <>
-        Define your data quality checks with simple, human-readable YAML. No
-        complex code required - just describe what you want to validate and
-        Weiser handles the rest.
+        Define your data quality checks and agent evals with simple,
+        human-readable YAML. No complex code required - just describe what you
+        want to validate and Weiser handles the rest. The declarative format is
+        LLM-friendly, so large language models can easily read and generate
+        Weiser configurations.
       </>
     ),
   },
   {
-    title: "LLM-Friendly Design",
+    title: "Agent Evals",
     Img: require("@site/static/img/llms.png").default,
     description: (
       <>
-        Designed for the AI era. Large Language Models can easily understand and
-        generate Weiser configurations, making it perfect for AI-assisted data
-        quality management and automated check generation.
+        Built for data-powered agents. Evaluate NL-to-SQL and BI agents with the
+        same declarative config as your checks - compare arms, score runs, and
+        gate releases. Weiser's own data quality checks are wired into eval
+        scoring, so when a data incident breaks an answer, blame lands on the
+        data, not the agent.
       </>
     ),
   },
@@ -31,8 +35,9 @@ const FeatureList = [
     description: (
       <>
         Supports PostgreSQL, MySQL, Databricks, Snowflake, BigQuery, Cube, and
-        scales to handle millions of records with advanced statistical analysis
-        and anomaly detection.
+        agent frameworks like Pydantic AI and Strands (more to come), scaling to
+        handle millions of records with advanced statistical analysis and
+        anomaly detection.
       </>
     ),
   },

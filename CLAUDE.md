@@ -65,6 +65,13 @@ When using Claude Code, prefix all bash commands with environment activation:
 source ~/.weiser_activate && [your_command]
 ```
 
+**Local `.venv` fallback**: If the conda environment is unavailable (e.g. `~/miniforge3` or `~/.weiser_activate` do not exist), check for a local virtualenv in the project root. When present, use its interpreter directly instead of activating conda:
+```bash
+# Use the local .venv interpreter directly
+.venv/bin/python -m weiser.main [command]
+.venv/bin/python -m pytest
+```
+
 ### Setup and Installation
 
 ```bash
