@@ -1,0 +1,4398 @@
+# Weiser — Full Documentation
+
+> Data Quality and Agent Evals in One Framework.
+
+Complete Weiser documentation for LLM/agent consumption. Each document
+is prefixed by its canonical markdown URL.
+
+========================================================================
+URL: https://weiser.ai/docs/intro.md
+========================================================================
+
+# Introduction
+
+Weiser is a comprehensive data quality framework that empowers teams to build reliable, trustworthy data systems through automated validation and monitoring. Whether you're managing a small analytics pipeline or enterprise-scale data infrastructure, Weiser provides the tools you need to ensure data integrity at every step.
+
+## What Weiser Does
+
+### 🔍 **Data Quality Validation**
+- **Row Count Checks**: Ensure tables have expected data volumes
+- **Numeric Validation**: Validate sums, averages, min/max values, and custom calculations
+- **Data Completeness**: Monitor NULL values and missing data with count or percentage thresholds
+- **Business Logic**: Validate complex business rules and KPIs
+- **Range Validation**: Check data falls within expected bounds
+
+### 📊 **Statistical Anomaly Detection**
+- **Automated Anomaly Detection**: Uses Median Absolute Deviation (MAD) for robust outlier detection
+- **Historical Analysis**: Compares current metrics against historical patterns
+- **Configurable Sensitivity**: Adjust detection thresholds based on your data's characteristics
+- **Time Series Monitoring**: Track metrics over time to identify unusual patterns
+
+### 🏗️ **Multi-Platform Support**
+- **Database Compatibility**: PostgreSQL, MySQL, and more
+- **Semantic Layer Integration**: Native Cube.js support for business metrics
+- **Flexible Datasets**: Work with tables, views, or custom SQL queries
+- **Cloud Ready**: DuckDB local storage or PostgreSQL/S3 for distributed teams
+
+### ⚡ **Developer-Friendly Experience**
+- **YAML Configuration**: Simple, version-controllable configuration files
+- **CLI Interface**: Easy command-line operation for CI/CD integration
+- **Modular Design**: Split configurations across multiple files for large projects
+- **Environment Variables**: Secure handling of sensitive connection data
+
+### 📈 **Monitoring & Alerting**
+- **Historical Metrics Storage**: Track check results over time
+- **Slack Integration**: Real-time notifications for check failures
+- **Dashboard Visualization**: Streamlit-based UI for exploring results
+- **Trend Analysis**: Monitor data quality trends and improvements
+
+### 🤖 **Agent Evals**
+- **Evals-As-YAML**: Configure NL-to-SQL / BI agent experiments declaratively — tools, prompts, models, and test cases all in YAML
+- **Arm Comparisons**: Ablate one variable at a time (a tool, a prompt, a model) across arms sharing a golden set
+- **Data-Quality Attribution**: Weiser's own DQ checks are wired into eval scoring, so a wrong answer caused by a data incident is attributed to data quality, not the agent
+- **CI Gating & Judge Calibration**: Regression gates for pipelines and LLM-judge metrics validated against human labels
+
+### 🎯 **Use Cases**
+
+**Data Engineering Teams**
+- Validate ETL pipeline outputs
+- Monitor data freshness and completeness
+- Catch data quality regressions early
+- Ensure SLA compliance
+
+**Analytics Teams**
+- Validate business metrics and KPIs
+- Monitor dashboard data quality
+- Detect anomalies in key business metrics
+- Ensure report accuracy
+
+**Data Science Teams**
+- Validate model input data quality
+- Monitor feature engineering pipelines
+- Detect data drift and model degradation
+- Ensure training data consistency
+
+**DevOps & Platform Teams**
+- Integrate data quality into CI/CD pipelines
+- Monitor production data systems
+- Set up automated alerting for data issues
+- Track data quality SLAs
+
+## Key Features
+
+### **Comprehensive Check Types**
+- **Basic Validation**: Row counts, sums, min/max values
+- **Advanced Logic**: Custom SQL expressions and calculations
+- **Data Completeness**: NULL value monitoring with flexible thresholds
+- **Semantic Layer**: Cube.js measure validation
+- **Anomaly Detection**: Statistical outlier detection
+
+### **Flexible Configuration**
+- **Multiple Datasources**: Connect to different databases simultaneously
+- **Dimensional Analysis**: Group checks by business dimensions
+- **Time-Based Aggregation**: Daily, monthly, yearly rollups
+- **Custom Filters**: Apply business logic and date ranges
+- **Templating**: Reusable configuration patterns
+
+### **Enterprise Ready**
+- **Scalable Architecture**: Handle large datasets efficiently
+- **Security**: Environment variable support for credentials
+- **Monitoring**: Built-in metrics storage and trend analysis
+- **Integration**: CLI tools for automation and CI/CD
+- **Extensibility**: Plugin architecture for custom checks
+
+### **Agent Evals**
+- **Declarative Experiments**: Agent variants and eval suites defined in YAML
+- **Semantic Layer Adapters**: Cube.js and generic SQL introspection
+- **Deterministic + LLM-Judge Metrics**: Zero-cost checks alongside rubric-based judging
+- **Dual Result Storage**: Dashboard-visible summary rows plus full JSONL traces
+
+## Getting Started
+
+Ready to improve your data quality? Start with our [Getting Started Guide](./tutorial/getting-started.md) to set up your first data quality checks in minutes.
+
+Explore specific check types in our [Check Types Documentation](./check-types/index.md) or dive into the complete [Configuration Reference](./configuration.md) for advanced setups.
+
+Evaluating an NL-to-SQL or BI agent instead? See [Agent Evals](./evals/index.md).
+
+========================================================================
+URL: https://weiser.ai/docs/tutorial/getting-started.md
+========================================================================
+
+# Getting Started with Weiser
+
+Get up and running with Weiser data quality checks in minutes. This guide will walk you through installation, minimal configuration, and running your first data quality checks.
+
+## Installation
+
+Install Weiser using pip:
+
+```bash
+pip install weiser-ai
+```
+
+## Prerequisites
+
+You'll need:
+
+- **PostgreSQL database** with sample data
+- **Database credentials** (host, port, username, password, database name)
+- **Python 3.10+**
+
+## Quick Start
+
+### 1. Create Your First Configuration
+
+Create a file called `weiser-config.yaml`:
+
+```yaml
+version: 1
+
+# Database connection
+datasources:
+  - name: default
+    type: postgresql
+    host: localhost
+    port: 5432
+    db_name: your_database
+    user: your_username
+    password: your_password
+
+# Metric storage (uses local DuckDB file)
+connections:
+  - name: metricstore
+    type: metricstore
+    db_type: duckdb
+    db_name: weiser_metrics.db
+
+# Data quality checks
+checks:
+  # Basic row count check
+  - name: orders_exist
+    dataset: orders
+    type: row_count
+    condition: gt
+    threshold: 0
+    description: "Ensure orders table has data"
+
+  # Check for recent data
+  - name: recent_orders
+    dataset: orders
+    type: row_count
+    condition: gt
+    threshold: 10
+    filter: created_at >= CURRENT_DATE - INTERVAL '7 days'
+    description: "Ensure we have recent orders"
+
+  # Revenue validation
+  - name: positive_revenue
+    dataset: orders
+    type: sum
+    measure: order_amount
+    condition: gt
+    threshold: 0
+    filter: status = 'completed'
+    description: "Ensure completed orders have positive revenue"
+```
+
+### 2. Test Your Configuration
+
+First, validate your configuration without running checks:
+
+```bash
+# Using default .env file
+weiser compile weiser-config.yaml -v
+
+# Using custom .env file
+weiser compile weiser-config.yaml -v --env-file /path/to/custom.env
+```
+
+This will:
+
+- ✅ Validate your YAML syntax
+- ✅ Check database connectivity
+- ✅ Verify table access
+- ✅ Generate SQL queries for review
+
+### 3. Run Your First Checks
+
+Execute the data quality checks:
+
+```bash
+# Using default .env file
+weiser run weiser-config.yaml -v
+
+# Using custom .env file
+weiser run weiser-config.yaml -v --env-file /path/to/custom.env
+```
+
+Expected output:
+
+```
+✅ orders_exist: 1,247 rows (> 0) - PASSED
+✅ recent_orders: 89 rows (> 10) - PASSED
+✅ positive_revenue: $45,231.50 (> 0) - PASSED
+
+All checks passed! 🎉
+```
+
+[![Watch the CLI Demo](https://cdn.loom.com/sessions/thumbnails/ce75ad760c324733a36c637a9f8fe826-401f2819c5918c19-full-play.gif)](https://www.loom.com/share/ce75ad760c324733a36c637a9f8fe826)
+
+## Environment Variables (Recommended)
+
+For security, use environment variables for sensitive data:
+
+```yaml
+# weiser-config.yaml
+datasources:
+  - name: default
+    type: postgresql
+    host: {{ DB_HOST }}
+    port: {{ DB_PORT }}
+    db_name: {{ DB_NAME }}
+    user: {{ DB_USER }}
+    password: {{ DB_PASSWORD }}
+```
+
+Create a `.env` file in your project directory:
+
+```bash
+# .env
+DB_HOST=localhost
+DB_PORT=5432
+DB_NAME=your_database
+DB_USER=your_username
+DB_PASSWORD=your_password
+```
+
+Or use a custom .env file location:
+
+```bash
+# Use custom .env file
+weiser run weiser-config.yaml --env-file /path/to/custom.env
+
+# Short form
+weiser run weiser-config.yaml -e /path/to/custom.env
+```
+
+## Common Check Patterns
+
+### Data Freshness
+
+```yaml
+- name: daily_data_check
+  dataset: transactions
+  type: row_count
+  condition: gt
+  threshold: 100
+  time_dimension:
+    name: created_at
+    granularity: day
+```
+
+### Data Completeness
+
+```yaml
+- name: customer_data_complete
+  dataset: customers
+  type: not_empty_pct
+  dimensions: [email, phone]
+  condition: le
+  threshold: 0.05 # Max 5% NULL values
+```
+
+### Business Logic Validation
+
+```yaml
+- name: average_order_value
+  dataset: orders
+  type: numeric
+  measure: AVG(order_amount)
+  condition: ge
+  threshold: 25.0
+  filter: status = 'completed'
+```
+
+### Multi-Table Checks
+
+```yaml
+- name: critical_tables_exist
+  dataset: [orders, customers, products]
+  type: row_count
+  condition: gt
+  threshold: 0
+```
+
+## Next Steps
+
+### 📊 Add More Check Types
+
+Explore all available check types in our [Check Types Documentation](../check-types/index.md):
+
+- [Row Count](../check-types/row-count.md) - Basic data volume validation
+- [Numeric](../check-types/numeric.md) - Custom calculations and business logic
+- [Data Completeness](../check-types/not-empty.md) - NULL value monitoring
+- [Anomaly Detection](../check-types/anomaly.md) - Statistical outlier detection
+
+### ⚙️ Advanced Configuration
+
+Learn about advanced features in the [Configuration Guide](../configuration.md):
+
+- Multiple datasources
+- Complex filters and dimensions
+- Time-based aggregations
+- Slack notifications
+
+### 🤖 Agent Evals
+
+Evaluating an NL-to-SQL or BI agent that queries your data? Weiser can run declarative agent eval suites — arms, goldens, and metrics in YAML:
+
+- [Agent Evals Overview](../evals/index.md)
+- [Agent Eval Configuration](../evals/configuration.md)
+- [Eval Commands](../evals/commands.md)
+
+### 🔄 Automation
+
+Integrate Weiser into your data pipeline:
+
+```bash
+# Add to your CI/CD pipeline
+weiser run production-config.yaml
+
+# Schedule with cron
+0 8 * * * /usr/local/bin/weiser run /path/to/config.yaml
+```
+
+### 📈 Monitoring Dashboard
+
+Once you have checks running regularly, explore the visualization dashboard:
+
+```bash
+cd weiser-ui
+pip install -r requirements.txt
+streamlit run app.py
+```
+
+[![Watch the Dashboard Demo](https://cdn.loom.com/sessions/thumbnails/3154b4ce21ea4aaa917066991eaf1fb6-aca9c23da977e100-full-play.gif)](https://www.loom.com/share/3154b4ce21ea4aaa917066991eaf1fb6)
+
+The dashboard provides:
+
+- **Historical Trends**: Track check results over time
+- **Failure Analysis**: Investigate failed checks
+- **Performance Metrics**: Monitor check execution times
+- **Data Quality Scores**: Overall system health view
+
+## Troubleshooting
+
+### Connection Issues
+
+```bash
+# Test database connectivity
+psql -h localhost -U your_username -d your_database -c "SELECT 1;"
+```
+
+### Permission Issues
+
+Ensure your database user has `SELECT` permissions on target tables:
+
+```sql
+GRANT SELECT ON ALL TABLES IN SCHEMA public TO your_username;
+```
+
+### Configuration Validation
+
+Use the compile command to validate your setup:
+
+```bash
+weiser compile your-config.yaml --verbose
+```
+
+## Getting Help
+
+- 📚 [Check Types Documentation](../check-types/index.md)
+- ⚙️ [Configuration Reference](../configuration.md)
+- 💬 [GitHub Issues](https://github.com/weiser-ai/weiser/issues)
+
+Ready to ensure your data quality? Start building more comprehensive checks with our detailed [Check Types Documentation](../check-types/index.md)!
+
+========================================================================
+URL: https://weiser.ai/docs/configuration.md
+========================================================================
+
+# Configuration
+
+Weiser uses YAML configuration files to define data quality checks, datasources, and connections — and, optionally, agent evals. This page provides a comprehensive guide to configuring your Weiser setup.
+
+## Configuration Structure
+
+```yaml
+version: 1
+datasources:
+  - name: default
+    type: postgresql
+    host: localhost
+    port: 5432
+    db_name: mydb
+    user: postgres
+    password: secret
+
+connections:
+  - name: metricstore
+    type: metricstore
+    db_type: duckdb
+    db_name: metricstore.db
+
+checks:
+  - name: orders_row_count
+    dataset: orders
+    type: row_count
+    condition: gt
+    threshold: 0
+
+# Optional: agent evals (see Agent Evals > Configuration)
+semantic_layers:
+  - name: local_sl
+    type: generic_sql
+    datasource: default
+
+agent_variants:
+  - name: baseline
+    framework: pydantic_ai
+    entrypoint: myapp.eval_agents.build_bi_agent
+    tools: [list_views, describe_view, query, submit_answer]
+
+eval_suites:
+  - name: my_suite
+    arms:
+      - name: baseline
+        agent_variant: baseline
+        semantic_layer: local_sl
+    metrics:
+      - type: reference_value_match
+
+includes:
+  - path/to/additional/config.yaml
+
+```
+
+## Top-Level Sections
+
+| Section | Required | Description |
+| ------- | -------- | ----------- |
+| `datasources` | No* | Database connections checks and evals run against |
+| `checks` | No* | Data quality checks |
+| `connections` | No (defaults to local DuckDB) | Metric store connections |
+| `semantic_layers` | No | Semantic layers for agent evals |
+| `agent_variants` | No | Declarative agent configurations for agent evals |
+| `eval_suites` | No | Agent eval suites (arms, goldens, metrics) |
+| `includes` | No | Additional config files to merge in |
+| `slack_url` | No | Slack webhook for failure notifications |
+
+\* At least one of `checks` or `eval_suites` should be present for a run to do anything.
+
+## Environment Variables (Recommended)
+Your configuration can use environment variables for sensitive information, weiser will read your .env file and replace the variables in the configuration.
+Environment variables already defined in your system can also be used. They are available in the configuration as `{{VARIABLE_NAME}}`.
+
+## Datasources
+
+Configure connections to your data sources:
+
+### PostgreSQL
+
+```yaml
+datasources:
+  - name: postgres_prod
+    type: postgresql
+    host: prod-db.company.com
+    port: 5432
+    db_name: production
+    user: weiser_user
+    password: mysecretpassword
+```
+
+### MySQL
+
+```yaml
+datasources:
+  - name: mysql_analytics
+    type: mysql
+    host: mysql.example.com
+    port: 3306
+    db_name: analytics
+    user: analytics_user
+    password: {{MYSQL_PASSWORD}}
+```
+
+### Cube.js
+
+```yaml
+datasources:
+  - name: cube_api
+    type: cube
+    uri: http://localhost:4000/cubejs-api/v1
+```
+
+### Connection URI
+
+```yaml
+datasources:
+  - name: warehouse
+    type: postgresql
+    uri: postgresql://user:pass@host:5432/database
+```
+
+## Metric Store Connections
+
+Configure where check results are stored:
+
+### DuckDB (Default)
+
+```yaml
+connections:
+  - name: metricstore
+    type: metricstore
+    db_type: duckdb
+    db_name: metricstore.db
+```
+
+### PostgreSQL Metric Store
+
+```yaml
+connections:
+  - name: metricstore
+    type: metricstore
+    db_type: postgresql
+    host: metrics-db.company.com
+    port: 5432
+    db_name: metrics
+    user: metrics_user
+    password: {{METRICS_PASSWORD}}
+```
+
+### S3 Storage (DuckDB with S3)
+
+```yaml
+connections:
+  - name: metricstore
+    type: metricstore
+    db_type: duckdb
+    s3_access_key: {{S3_ACCESS_KEY}}
+    s3_secret_access_key: {{S3_SECRET_KEY}}
+    s3_endpoint: s3.amazonaws.com
+    s3_bucket: weiser-metrics
+    s3_region: us-east-1
+```
+
+## Check Configuration
+
+### Basic Check Structure
+
+```yaml
+checks:
+  - name: unique_check_name
+    dataset: table_name_or_sql
+    type: check_type
+    condition: comparison_operator
+    threshold: value_or_range
+    # Optional parameters
+    measure: column_or_expression
+    dimensions: [column1, column2]
+    filter: where_clause
+    time_dimension:
+      name: date_column
+      granularity: day
+```
+
+### Required Parameters
+
+| Parameter   | Description         | Example            |
+| ----------- | ------------------- | ------------------ |
+| `name`      | Unique identifier   | `orders_row_count` |
+| `dataset`   | Table or SQL query  | `orders`           |
+| `type`      | Check type          | `row_count`        |
+| `condition` | Comparison operator | `gt`               |
+| `threshold` | Expected value      | `1000`             |
+
+### Optional Parameters
+
+| Parameter     | Description          | Example                 |
+| ------------- | -------------------- | ----------------------- |
+| `datasource`  | Datasource name      | `postgres_prod`         |
+| `measure`     | Column/expression    | `order_amount`          |
+| `dimensions`  | Group by columns     | `[region, status]`      |
+| `filter`      | WHERE clause         | `status = 'active'`     |
+| `description` | Check description    | `Validates order count` |
+| `fail`        | Allow check failures | `false`                 |
+
+## Conditions
+
+| Condition | Description           | Example                                  |
+| --------- | --------------------- | ---------------------------------------- |
+| `gt`      | Greater than          | `actual > threshold`                     |
+| `ge`      | Greater than or equal | `actual >= threshold`                    |
+| `lt`      | Less than             | `actual < threshold`                     |
+| `le`      | Less than or equal    | `actual <= threshold`                    |
+| `eq`      | Equal to              | `actual == threshold`                    |
+| `neq`     | Not equal to          | `actual != threshold`                    |
+| `between` | Between range         | `threshold[0] <= actual <= threshold[1]` |
+
+## Threshold Types
+
+### Single Value
+
+```yaml
+threshold: 1000
+```
+
+### Range (for between condition)
+
+```yaml
+condition: between
+threshold: [100, 500]
+```
+
+### Decimal Values
+
+```yaml
+threshold: 0.05 # 5% for percentage checks
+```
+
+## Dimensions
+
+Group checks by specific columns:
+
+```yaml
+# Single dimension
+dimensions: [region]
+
+# Multiple dimensions
+dimensions: [region, product_category, quarter]
+
+# No dimensions (aggregate entire dataset)
+dimensions: []
+```
+
+## Time Dimensions
+
+Add time-based grouping:
+
+```yaml
+time_dimension:
+  name: created_at
+  granularity:
+    day # millennium, century, decade, year, quarter,
+    # month, week, day, hour, minute, second
+```
+
+## Filters
+
+Add WHERE clause conditions:
+
+```yaml
+# Simple filter
+filter:
+  - status = 'active'
+
+# Complex filter
+filter:
+  - status IN ('active', 'pending') AND created_at >= '2024-01-01'
+
+# Multiple filters, will be combined with AND
+filter:
+  - status = 'active'
+  - amount > 0
+```
+
+## Dataset Options
+
+### Table Name
+
+```yaml
+dataset: orders
+```
+
+### Multiple Tables
+
+```yaml
+dataset: [orders, returns, refunds]
+```
+
+### Custom SQL
+
+```yaml
+dataset: >
+  SELECT o.*, c.customer_tier
+  FROM orders o
+  JOIN customers c ON o.customer_id = c.id
+  WHERE o.created_at >= CURRENT_DATE - INTERVAL '30 days'
+```
+
+## Environment Variables
+
+Use environment variables for sensitive data:
+
+```yaml
+datasources:
+  - name: prod
+    type: postgresql
+    host: {{DB_HOST}}
+    user: {{DB_USER}}
+    password: {{DB_PASSWORD}}
+    db_name: {{DB_NAME}}
+```
+
+Set environment variables:
+
+```bash
+export DB_HOST=prod-db.company.com
+export DB_USER=weiser_user
+export DB_PASSWORD=secret123
+export DB_NAME=production
+```
+
+## Configuration Includes
+
+Split configuration across multiple files:
+
+```yaml
+# main.yaml
+version: 1
+includes:
+  - datasources.yaml
+  - checks/row_counts.yaml
+  - checks/revenue_checks.yaml
+```
+
+```yaml
+# datasources.yaml
+datasources:
+  - name: postgres_prod
+    type: postgresql
+    # ... connection details
+```
+
+## Templating
+
+Use template variables for reusable configurations:
+
+```yaml
+# Template variables
+variables:
+  min_row_count: 1000
+  revenue_threshold: 50000
+
+checks:
+  - name: orders_count
+    dataset: orders
+    type: row_count
+    condition: gt
+    threshold: 0
+```
+
+## Slack Integration
+
+Configure Slack notifications:
+
+```yaml
+slack_url: https://hooks.slack.com/services/T00000000/B00000000/XXXXXXXXXXXXXXXXXXXXXXXX
+```
+
+## Agent Evals
+
+The `semantic_layers`, `agent_variants`, and `eval_suites` sections configure agent evals — evaluating NL-to-SQL / BI agents against your semantic layer, scored by deterministic and LLM-judge metrics. They are covered in detail in the [Agent Eval Configuration](./evals/configuration.md) guide, alongside the [eval commands](./evals/commands.md) and [metric reference](./evals/metrics.md).
+
+## Validation
+
+Weiser validates your configuration on startup. Common validation errors:
+
+### Missing Required Fields
+
+```
+Error: Check 'my_check' missing required field 'condition'
+```
+
+### Invalid Check Type
+
+```
+Error: Unknown check type 'invalid_type'
+```
+
+### Invalid Condition
+
+```
+Error: Invalid condition 'invalid_condition'
+```
+
+### Missing Threshold for Between
+
+```
+Error: 'between' condition requires array threshold [min, max]
+```
+
+## Best Practices
+
+1. **Environment Variables**: Use for sensitive data
+2. **Descriptive Names**: Use clear, descriptive check names
+3. **Documentation**: Add descriptions to complex checks
+4. **Modular Files**: Split large configurations into multiple files
+5. **Version Control**: Store configurations in version control
+6. **Testing**: Test configurations in non-production environments
+7. **Monitoring**: Set up alerts for check failures
+
+## Example Complete Configuration
+
+```yaml
+version: 1
+
+datasources:
+  - name: warehouse
+    type: postgresql
+    host: localhost
+    port: 5432
+    db_name: analytics
+    user: MyUser
+    password: MyPassword
+
+connections:
+  - name: metricstore
+    type: metricstore
+    db_type: duckdb
+    db_name: weiser_metrics.db
+
+checks:
+  # Row count checks
+  - name: orders_daily_count
+    dataset: orders
+    type: row_count
+    condition: gt
+    threshold: 100
+    time_dimension:
+      name: created_at
+      granularity: day
+
+  # Revenue validation
+  - name: daily_revenue
+    dataset: orders
+    type: sum
+    measure: order_amount
+    condition: ge
+    threshold: 10000
+    filter: status = 'completed'
+    time_dimension:
+      name: created_at
+      granularity: day
+
+  # Data completeness
+  - name: customer_data_completeness
+    dataset: customers
+    type: not_empty_pct
+    dimensions: [email, phone]
+    condition: le
+    # Max 5% NULL values
+    threshold: 0.05
+
+```
+
+========================================================================
+URL: https://weiser.ai/docs/datasources.md
+========================================================================
+
+# Supported Datasources
+
+Weiser supports multiple database systems and data platforms for running data quality checks. This page provides detailed configuration and setup instructions for each supported datasource.
+
+## Overview
+
+Currently supported datasources:
+
+| Datasource     | Type         | Status             | Use Cases                        |
+| -------------- | ------------ | ------------------ | -------------------------------- |
+| **PostgreSQL** | `postgresql` | ✅ Fully Supported | OLTP, Analytics, Data Warehouses |
+| **MySQL**      | `mysql`      | ✅ Fully Supported | OLTP, Web Applications           |
+| **Snowflake**  | `snowflake`  | ✅ Fully Supported | Cloud Data Warehouse             |
+| **Databricks** | `databricks` | ✅ Fully Supported | Cloud Data Warehouse             |
+| **BigQuery**   | `bigquery`   | ✅ Fully Supported | Cloud Data Warehouse             |
+| **Cube.js**    | `cube`       | ✅ Fully Supported | Semantic Layer, Business Metrics |
+| **Redshift**   | `redshift`   | 📋 Planned         | Cloud Data Warehouse             |
+| **Athena**     | `athena`     | 📋 Planned         | Cloud Data Warehouse             |
+| **Trino**      | `trino`      | 📋 Planned         | Distributed Data Warehouse       |
+
+## PostgreSQL
+
+PostgreSQL is the primary supported datasource with full feature compatibility for all check types.
+
+### Configuration
+
+#### Basic Connection
+
+```yaml
+datasources:
+  - name: postgres_prod
+    type: postgresql
+    host: localhost
+    port: 5432
+    db_name: production
+    user: weiser_user
+    password: secure_password
+```
+
+#### Connection URI
+
+```yaml
+datasources:
+  - name: postgres_warehouse
+    type: postgresql
+    uri: postgresql://user:password@host:5432/database
+```
+
+#### Environment Variables (Recommended)
+
+```yaml
+datasources:
+  - name: postgres_prod
+    type: postgresql
+    host: {{POSTGRES_HOST}}
+    port: {{POSTGRES_PORT}}
+    db_name: {{POSTGRES_DB}}
+    user: {{POSTGRES_USER}}
+    password: {{POSTGRES_PASSWORD}}
+```
+
+### Connection Parameters
+
+| Parameter  | Required | Default | Description                                                |
+| ---------- | -------- | ------- | ---------------------------------------------------------- |
+| `name`     | Yes      | -       | Unique datasource identifier                               |
+| `type`     | Yes      | -       | Must be `postgresql`                                       |
+| `host`     | Yes\*    | -       | Database server hostname                                   |
+| `port`     | No       | 5432    | Database server port                                       |
+| `db_name`  | Yes\*    | -       | Database name                                              |
+| `user`     | Yes\*    | -       | Database username                                          |
+| `password` | Yes\*    | -       | Database password                                          |
+| `uri`      | Yes\*    | -       | Complete connection URI (alternative to individual params) |
+
+\*Either individual parameters OR uri is required
+
+### Setup Requirements
+
+#### 1. Database User Permissions
+
+```sql
+-- Create dedicated user for Weiser
+CREATE USER weiser_user WITH PASSWORD 'secure_password';
+
+-- Grant read permissions
+GRANT CONNECT ON DATABASE your_database TO weiser_user;
+GRANT USAGE ON SCHEMA public TO weiser_user;
+GRANT SELECT ON ALL TABLES IN SCHEMA public TO weiser_user;
+
+-- Grant permissions for future tables
+ALTER DEFAULT PRIVILEGES IN SCHEMA public
+GRANT SELECT ON TABLES TO weiser_user;
+```
+
+#### 2. Network Access
+
+Ensure your PostgreSQL server allows connections from Weiser:
+
+```bash
+# Test connectivity
+psql -h your-host -U weiser_user -d your_database -c "SELECT 1;"
+```
+
+#### 3. SSL Configuration (Recommended)
+
+```yaml
+datasources:
+  - name: postgres_prod
+    type: postgresql
+    uri: postgresql://user:password@host:5432/database?sslmode=require
+```
+
+### Supported Features
+
+| Feature                   | PostgreSQL Support |
+| ------------------------- | ------------------ |
+| **Row Count Checks**      | ✅ Full Support    |
+| **Numeric Checks**        | ✅ Full Support    |
+| **Sum/Min/Max Checks**    | ✅ Full Support    |
+| **Not Empty Checks**      | ✅ Full Support    |
+| **Anomaly Detection**     | ✅ Full Support    |
+| **Custom SQL**            | ✅ Full Support    |
+| **Time Dimensions**       | ✅ Full Support    |
+| **Dimensions/Grouping**   | ✅ Full Support    |
+| **Complex Filters**       | ✅ Full Support    |
+| **Window Functions**      | ✅ Full Support    |
+| **Statistical Functions** | ✅ Full Support    |
+
+### PostgreSQL-Specific Examples
+
+#### Using PostgreSQL Date Functions
+
+```yaml
+- name: recent_data_check
+  dataset: orders
+  type: row_count
+  condition: gt
+  threshold: 100
+  filter: created_at >= CURRENT_DATE - INTERVAL '7 days'
+```
+
+### Performance Optimization
+
+#### Indexes
+
+Ensure proper indexes for check performance:
+
+```sql
+-- Index for time-based checks
+CREATE INDEX idx_orders_created_at ON orders(created_at);
+
+-- Index for filtered checks
+CREATE INDEX idx_orders_status ON orders(status);
+
+-- Composite index for grouped checks
+CREATE INDEX idx_sales_region_date ON sales(region, sale_date);
+```
+
+### Common Issues & Solutions
+
+#### Connection Timeout
+
+```yaml
+# Increase timeout for large queries
+datasources:
+  - name: postgres_prod
+    type: postgresql
+    uri: postgresql://user:password@host:5432/database?connect_timeout=30
+```
+
+#### SSL Certificate Issues
+
+```yaml
+# Skip SSL verification (not recommended for production)
+datasources:
+  - name: postgres_dev
+    type: postgresql
+    uri: postgresql://user:password@host:5432/database?sslmode=disable
+```
+
+#### Large Result Sets
+
+```yaml
+# Use LIMIT in checks for large tables
+- name: sample_data_check
+  dataset: |
+    SELECT * FROM large_table 
+    ORDER BY created_at DESC 
+    LIMIT 100000
+  type: row_count
+  condition: gt
+  threshold: 50000
+```
+
+## MySQL
+
+MySQL is a popular open-source relational database that supports all Weiser check types. The MySQL connector uses the PyMySQL driver for reliable connectivity and full feature compatibility.
+
+### Configuration
+
+#### Basic Connection
+
+```yaml
+datasources:
+  - name: mysql_prod
+    type: mysql
+    host: localhost
+    port: 3306
+    db_name: production
+    user: weiser_user
+    password: secure_password
+```
+
+#### Connection URI
+
+```yaml
+datasources:
+  - name: mysql_warehouse
+    type: mysql
+    uri: mysql+pymysql://user:password@host:3306/database
+```
+
+#### Environment Variables (Recommended)
+
+```yaml
+datasources:
+  - name: mysql_prod
+    type: mysql
+    host: {{MYSQL_HOST}}
+    port: {{MYSQL_PORT}}
+    db_name: {{MYSQL_DB}}
+    user: {{MYSQL_USER}}
+    password: {{MYSQL_PASSWORD}}
+```
+
+### Connection Parameters
+
+| Parameter  | Required | Default | Description                                                |
+| ---------- | -------- | ------- | ---------------------------------------------------------- |
+| `name`     | Yes      | -       | Unique datasource identifier                               |
+| `type`     | Yes      | -       | Must be `mysql`                                            |
+| `host`     | Yes\*    | -       | Database server hostname                                   |
+| `port`     | No       | 3306    | Database server port                                       |
+| `db_name`  | Yes\*    | -       | Database name                                              |
+| `user`     | Yes\*    | -       | Database username                                          |
+| `password` | No       | -       | Database password                                          |
+| `uri`      | Yes\*    | -       | Complete connection URI (alternative to individual params) |
+
+\*Either individual parameters OR uri is required
+
+### Setup Requirements
+
+#### 1. Database User Permissions
+
+```sql
+-- Create dedicated user for Weiser
+CREATE USER 'weiser_user'@'%' IDENTIFIED BY 'secure_password';
+
+-- Grant read permissions
+GRANT SELECT ON production.* TO 'weiser_user'@'%';
+
+-- Grant connection permissions
+GRANT USAGE ON *.* TO 'weiser_user'@'%';
+
+-- Apply changes
+FLUSH PRIVILEGES;
+```
+
+#### 2. Network Access
+
+Ensure your MySQL server allows connections from Weiser:
+
+```bash
+# Test connectivity
+mysql -h your-host -u weiser_user -p production -e "SELECT 1;"
+```
+
+#### 3. SSL Configuration (Recommended)
+
+```yaml
+datasources:
+  - name: mysql_prod
+    type: mysql
+    uri: mysql+pymysql://user:password@host:3306/database?ssl_ca=/path/to/ca.pem&ssl_verify_identity=true
+```
+
+### Supported Features
+
+| Feature                   | MySQL Support  |
+| ------------------------- | -------------- |
+| **Row Count Checks**      | ✅ Full Support |
+| **Numeric Checks**        | ✅ Full Support |
+| **Sum/Min/Max Checks**    | ✅ Full Support |
+| **Not Empty Checks**      | ✅ Full Support |
+| **Anomaly Detection**     | ✅ Full Support |
+| **Custom SQL**            | ✅ Full Support |
+| **Time Dimensions**       | ✅ Full Support |
+| **Dimensions/Grouping**   | ✅ Full Support |
+| **Complex Filters**       | ✅ Full Support |
+| **Window Functions**      | ✅ Full Support |
+| **Statistical Functions** | ✅ Full Support |
+
+### MySQL-Specific Examples
+
+#### Using MySQL Date Functions
+
+```yaml
+- name: recent_data_check
+  dataset: orders
+  type: row_count
+  condition: gt
+  threshold: 100
+  filter: created_at >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)
+```
+
+#### Using MySQL String Functions
+
+```yaml
+- name: email_format_check
+  dataset: customers
+  type: row_count
+  condition: eq
+  threshold: 0
+  filter: email NOT REGEXP '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$'
+```
+
+#### JSON Data Validation
+
+```yaml
+- name: json_data_check
+  dataset: user_preferences
+  type: row_count
+  condition: gt
+  threshold: 1000
+  filter: JSON_VALID(preferences_json) = 1
+```
+
+### Performance Optimization
+
+#### Indexes
+
+Ensure proper indexes for check performance:
+
+```sql
+-- Index for time-based checks
+CREATE INDEX idx_orders_created_at ON orders(created_at);
+
+-- Index for filtered checks
+CREATE INDEX idx_orders_status ON orders(status);
+
+-- Composite index for grouped checks
+CREATE INDEX idx_sales_region_date ON sales(region, sale_date);
+```
+
+#### Query Optimization
+
+```sql
+-- Use appropriate storage engines
+ALTER TABLE large_table ENGINE=InnoDB;
+
+-- Enable query cache for repeated checks
+SET GLOBAL query_cache_type = ON;
+SET GLOBAL query_cache_size = 268435456;  -- 256MB
+```
+
+### Common Issues & Solutions
+
+#### Connection Timeout
+
+```yaml
+# Increase timeout for large queries
+datasources:
+  - name: mysql_prod
+    type: mysql
+    uri: mysql+pymysql://user:password@host:3306/database?connect_timeout=30&read_timeout=60
+```
+
+#### SSL Certificate Issues
+
+```yaml
+# Disable SSL (not recommended for production)
+datasources:
+  - name: mysql_dev
+    type: mysql
+    uri: mysql+pymysql://user:password@host:3306/database?ssl_disabled=true
+```
+
+#### Character Set Issues
+
+```yaml
+# Specify character set
+datasources:
+  - name: mysql_prod
+    type: mysql
+    uri: mysql+pymysql://user:password@host:3306/database?charset=utf8mb4
+```
+
+#### Large Result Sets
+
+```yaml
+# Use LIMIT in checks for large tables
+- name: sample_data_check
+  dataset: |
+    SELECT * FROM large_table 
+    ORDER BY created_at DESC 
+    LIMIT 100000
+  type: row_count
+  condition: gt
+  threshold: 50000
+```
+
+### MySQL Version Compatibility
+
+Weiser supports MySQL versions:
+
+- **MySQL 5.7+**: Full support for all features
+- **MySQL 8.0+**: Enhanced support with JSON functions and window functions
+- **MariaDB 10.3+**: Compatible with MySQL features
+
+### Cloud MySQL Services
+
+#### Amazon RDS for MySQL
+
+```yaml
+datasources:
+  - name: mysql_rds
+    type: mysql
+    host: myinstance.123456789012.us-east-1.rds.amazonaws.com
+    port: 3306
+    db_name: production
+    user: {{RDS_USERNAME}}
+    password: {{RDS_PASSWORD}}
+```
+
+#### Google Cloud SQL for MySQL
+
+```yaml
+datasources:
+  - name: mysql_cloudsql
+    type: mysql
+    host: 10.1.2.3  # Private IP or public IP
+    port: 3306
+    db_name: production
+    user: {{CLOUDSQL_USERNAME}}
+    password: {{CLOUDSQL_PASSWORD}}
+```
+
+#### Azure Database for MySQL
+
+```yaml
+datasources:
+  - name: mysql_azure
+    type: mysql
+    host: myserver.mysql.database.azure.com
+    port: 3306
+    db_name: production
+    user: {{AZURE_MYSQL_USERNAME}}
+    password: {{AZURE_MYSQL_PASSWORD}}
+```
+
+## Snowflake
+
+Snowflake is a fully-managed cloud data warehouse that supports all Weiser check types. The Snowflake connector provides native support for Snowflake-specific features like warehouses, roles, and schemas.
+
+### Configuration
+
+#### Basic Connection
+
+```yaml
+datasources:
+  - name: snowflake_prod
+    type: snowflake
+    account: your-account-id
+    db_name: PRODUCTION_DB
+    user: WEISER_USER
+    password: secure_password
+    warehouse: COMPUTE_WH
+    role: ANALYST_ROLE
+    schema_name: PUBLIC
+```
+
+#### Connection URI
+
+```yaml
+datasources:
+  - name: snowflake_warehouse
+    type: snowflake
+    uri: snowflake://user:password@account.snowflakecomputing.com/database?warehouse=WH&role=ROLE&schema=SCHEMA
+```
+
+#### Environment Variables (Recommended)
+
+```yaml
+datasources:
+  - name: snowflake_prod
+    type: snowflake
+    account: {{SNOWFLAKE_ACCOUNT}}
+    db_name: {{SNOWFLAKE_DATABASE}}
+    user: {{SNOWFLAKE_USER}}
+    password: {{SNOWFLAKE_PASSWORD}}
+    warehouse: {{SNOWFLAKE_WAREHOUSE}}
+    role: {{SNOWFLAKE_ROLE}}
+    schema_name: {{SNOWFLAKE_SCHEMA}}
+```
+
+### Connection Parameters
+
+| Parameter   | Required | Default | Description                                                |
+| ----------- | -------- | ------- | ---------------------------------------------------------- |
+| `name`      | Yes      | -       | Unique datasource identifier                               |
+| `type`      | Yes      | -       | Must be `snowflake`                                        |
+| `host`      | Yes\*    | -       | Snowflake account URL (e.g., account.snowflakecomputing.com) |
+| `db_name`   | Yes\*    | -       | Database name                                              |
+| `user`      | Yes\*    | -       | Snowflake username                                         |
+| `password`  | Yes\*    | -       | Snowflake password                                         |
+| `warehouse` | No       | -       | Warehouse to use for compute                               |
+| `role`      | No       | -       | Role to assume for permissions                             |
+| `schema_name`    | No       | -       | Default schema to use                                      |
+| `uri`       | Yes\*    | -       | Complete connection URI (alternative to individual params) |
+
+\*Either individual parameters OR uri is required
+
+### Setup Requirements
+
+#### 1. Snowflake User and Role Setup
+
+```sql
+-- Create role for Weiser
+CREATE ROLE weiser_role;
+
+-- Create user for Weiser
+CREATE USER weiser_user
+    PASSWORD = 'secure_password'
+    DEFAULT_ROLE = weiser_role
+    DEFAULT_WAREHOUSE = COMPUTE_WH
+    DEFAULT_NAMESPACE = 'PRODUCTION_DB.PUBLIC';
+
+-- Grant role to user
+GRANT ROLE weiser_role TO USER weiser_user;
+
+-- Grant database and schema permissions
+GRANT USAGE ON DATABASE PRODUCTION_DB TO ROLE weiser_role;
+GRANT USAGE ON SCHEMA PRODUCTION_DB.PUBLIC TO ROLE weiser_role;
+GRANT SELECT ON ALL TABLES IN SCHEMA PRODUCTION_DB.PUBLIC TO ROLE weiser_role;
+
+-- Grant warehouse usage
+GRANT USAGE ON WAREHOUSE COMPUTE_WH TO ROLE weiser_role;
+
+-- Grant permissions for future tables
+GRANT SELECT ON FUTURE TABLES IN SCHEMA PRODUCTION_DB.PUBLIC TO ROLE weiser_role;
+```
+
+#### 2. Network Access
+
+Snowflake is cloud-hosted and accessible via HTTPS. Ensure your network allows outbound HTTPS connections.
+
+#### 3. Account Identifier
+
+Find your Snowflake account identifier:
+
+```sql
+-- Run this in Snowflake to get your account identifier
+SELECT CURRENT_ACCOUNT();
+```
+
+### Supported Features
+
+| Feature                   | Snowflake Support |
+| ------------------------- | ----------------- |
+| **Row Count Checks**      | ✅ Full Support   |
+| **Numeric Checks**        | ✅ Full Support   |
+| **Sum/Min/Max Checks**    | ✅ Full Support   |
+| **Not Empty Checks**      | ✅ Full Support   |
+| **Anomaly Detection**     | ✅ Full Support   |
+| **Custom SQL**            | ✅ Full Support   |
+| **Time Dimensions**       | ✅ Full Support   |
+| **Dimensions/Grouping**   | ✅ Full Support   |
+| **Complex Filters**       | ✅ Full Support   |
+| **Window Functions**      | ✅ Full Support   |
+| **Statistical Functions** | ✅ Full Support   |
+
+### Snowflake-Specific Examples
+
+#### Using Snowflake Date Functions
+
+```yaml
+- name: recent_data_check
+  dataset: orders
+  type: row_count
+  condition: gt
+  threshold: 100
+  filter: created_at >= DATEADD(day, -7, CURRENT_DATE())
+```
+
+#### Time Travel Queries
+
+```yaml
+- name: historical_comparison
+  dataset: |
+    SELECT COUNT(*) as current_count
+    FROM orders
+    WHERE created_at >= CURRENT_DATE()
+  type: numeric
+  measure: current_count
+  condition: gt
+  threshold: 1000
+```
+
+#### Using Snowflake Warehouse Scaling
+
+```yaml
+# Use larger warehouse for intensive checks
+datasources:
+  - name: snowflake_large
+    type: snowflake
+    host: account.snowflakecomputing.com
+    db_name: ANALYTICS_DB
+    user: weiser_user
+    password: secure_password
+    warehouse: LARGE_WH  # Use larger warehouse for heavy workloads
+    role: ANALYST_ROLE
+```
+
+### Performance Optimization
+
+#### Warehouse Sizing
+
+Choose appropriate warehouse size based on check complexity:
+
+- **XS/S**: Simple row counts and basic aggregations
+- **M/L**: Complex joins and window functions
+- **XL/2XL**: Large-scale statistical analysis
+
+#### Query Optimization
+
+```sql
+-- Use clustering keys for large tables
+ALTER TABLE orders CLUSTER BY (created_at);
+
+-- Use materialized views for complex aggregations
+CREATE MATERIALIZED VIEW daily_order_metrics AS
+SELECT 
+    DATE_TRUNC('day', created_at) as order_date,
+    COUNT(*) as order_count,
+    SUM(amount) as total_amount
+FROM orders
+GROUP BY 1;
+```
+
+### Common Issues & Solutions
+
+#### Authentication Errors
+
+```yaml
+# Ensure correct role and warehouse
+datasources:
+  - name: snowflake_prod
+    type: snowflake
+    host: account.snowflakecomputing.com
+    db_name: PROD_DB
+    user: WEISER_USER
+    password: secure_password
+    warehouse: COMPUTE_WH  # Must have USAGE privilege
+    role: ANALYST_ROLE     # Must be granted to user
+```
+
+#### Warehouse Suspension
+
+```yaml
+# Auto-resume warehouses (default behavior)
+# Warehouses automatically resume when queries are executed
+# Consider using auto-suspend settings in Snowflake
+```
+
+#### Large Result Sets
+
+```yaml
+# Use LIMIT for sampling large tables
+- name: sample_data_check
+  dataset: |
+    SELECT * FROM large_table 
+    SAMPLE (1000 ROWS)  -- Snowflake sampling
+  type: row_count
+  condition: eq
+  threshold: 1000
+```
+
+## Databricks
+
+Databricks is a unified data analytics platform that supports all Weiser check types. The Databricks connector provides native support for both SQL warehouses and compute clusters with Unity Catalog integration.
+
+### Configuration
+
+#### Basic Connection (SQL Warehouse)
+
+```yaml
+datasources:
+  - name: databricks_prod
+    type: databricks
+    host: workspace-123.cloud.databricks.com
+    access_token: dapi123456789abcdef
+    http_path: /sql/1.0/warehouses/abc123def456
+    catalog: main
+    schema_name: default
+```
+
+#### Cluster Connection
+
+```yaml
+datasources:
+  - name: databricks_cluster
+    type: databricks
+    host: workspace-456.cloud.databricks.com
+    access_token: dapi987654321fedcba
+    http_path: /sql/protocolv1/o/123456789/clusters/1234-567890-abc123
+    catalog: hive_metastore
+    schema_name: public
+```
+
+#### Environment Variables (Recommended)
+
+```yaml
+datasources:
+  - name: databricks_prod
+    type: databricks
+    host: {{DATABRICKS_HOST}}
+    access_token: {{DATABRICKS_ACCESS_TOKEN}}
+    http_path: {{DATABRICKS_HTTP_PATH}}
+    catalog: {{DATABRICKS_CATALOG}}
+    schema_name: {{DATABRICKS_SCHEMA}}
+```
+
+### Connection Parameters
+
+| Parameter      | Required | Default | Description                                                |
+| -------------- | -------- | ------- | ---------------------------------------------------------- |
+| `name`         | Yes      | -       | Unique datasource identifier                               |
+| `type`         | Yes      | -       | Must be `databricks`                                       |
+| `host`         | Yes\*    | -       | Databricks workspace hostname (e.g., workspace-123.cloud.databricks.com) |
+| `access_token` | Yes\*    | -       | Databricks personal access token                           |
+| `http_path`    | Yes\*    | -       | HTTP path to SQL warehouse or cluster endpoint            |
+| `catalog`      | No       | -       | Unity Catalog name (e.g., main, hive_metastore)          |
+| `schema_name`  | No       | -       | Default schema to use                                      |
+| `uri`          | Yes\*    | -       | Complete connection URI (alternative to individual params) |
+
+\*Either individual parameters OR uri is required
+
+### Setup Requirements
+
+#### 1. Databricks Access Token
+
+Create a personal access token in your Databricks workspace:
+
+1. Go to User Settings > Developer > Access tokens
+2. Generate new token with appropriate permissions
+3. Copy the token value (starts with `dapi`)
+
+#### 2. SQL Warehouse or Cluster Setup
+
+**For SQL Warehouses (Recommended):**
+```sql
+-- Get HTTP path from SQL Warehouses page
+-- Format: /sql/1.0/warehouses/{warehouse-id}
+```
+
+**For Compute Clusters:**
+```sql
+-- Get HTTP path from Compute page
+-- Format: /sql/protocolv1/o/{org-id}/clusters/{cluster-id}
+```
+
+#### 3. Unity Catalog Setup (Optional)
+
+```sql
+-- Create catalog for data quality
+CREATE CATALOG data_quality;
+
+-- Grant permissions
+GRANT USE CATALOG ON data_quality TO `weiser@company.com`;
+GRANT USE SCHEMA ON data_quality.default TO `weiser@company.com`;
+GRANT SELECT ON data_quality.default.* TO `weiser@company.com`;
+```
+
+### Supported Features
+
+| Feature                   | Databricks Support |
+| ------------------------- | ------------------- |
+| **Row Count Checks**      | ✅ Full Support     |
+| **Numeric Checks**        | ✅ Full Support     |
+| **Sum/Min/Max Checks**    | ✅ Full Support     |
+| **Not Empty Checks**      | ✅ Full Support     |
+| **Anomaly Detection**     | ✅ Full Support     |
+| **Custom SQL**            | ✅ Full Support     |
+| **Time Dimensions**       | ✅ Full Support     |
+| **Dimensions/Grouping**   | ✅ Full Support     |
+| **Complex Filters**       | ✅ Full Support     |
+| **Window Functions**      | ✅ Full Support     |
+| **Statistical Functions** | ✅ Full Support     |
+| **Unity Catalog**         | ✅ Full Support     |
+
+### Databricks-Specific Examples
+
+#### Using Unity Catalog
+
+```yaml
+- name: unity_catalog_check
+  dataset: main.sales.orders
+  type: row_count
+  condition: gt
+  threshold: 1000
+  filter: order_date >= current_date() - interval 7 days
+```
+
+#### Delta Lake Time Travel
+
+```yaml
+- name: historical_comparison
+  dataset: |
+    SELECT COUNT(*) as current_count
+    FROM delta.`/mnt/delta/orders`
+    VERSION AS OF 123
+  type: numeric
+  measure: current_count
+  condition: gt
+  threshold: 5000
+```
+
+#### Using Databricks SQL Functions
+
+```yaml
+- name: data_freshness_check
+  dataset: events
+  type: numeric
+  measure: datediff(current_timestamp(), max(event_timestamp))
+  condition: lt
+  threshold: 24
+  filter: event_date = current_date()
+```
+
+### Performance Optimization
+
+#### Warehouse Sizing
+
+Choose appropriate warehouse size based on check complexity:
+
+- **2X-Small/X-Small**: Simple row counts and basic aggregations
+- **Small/Medium**: Complex joins and window functions
+- **Large/X-Large**: Large-scale statistical analysis and heavy workloads
+
+#### Query Optimization
+
+```sql
+-- Use Delta Lake optimization features
+OPTIMIZE delta.`/mnt/delta/orders` ZORDER BY (order_date);
+
+-- Create materialized views for complex aggregations
+CREATE MATERIALIZED VIEW daily_order_metrics AS
+SELECT 
+    date_trunc('day', order_date) as order_date,
+    COUNT(*) as order_count,
+    SUM(amount) as total_amount
+FROM orders
+GROUP BY 1;
+```
+
+### Common Issues & Solutions
+
+#### Authentication Errors
+
+```yaml
+# Ensure access token has proper permissions
+datasources:
+  - name: databricks_prod
+    type: databricks
+    host: workspace-123.cloud.databricks.com
+    access_token: dapi123456789abcdef  # Must start with 'dapi'
+    http_path: /sql/1.0/warehouses/abc123def456
+```
+
+#### Warehouse Auto-Suspend
+
+```yaml
+# Warehouses auto-suspend when idle
+# They automatically resume when queries are executed
+# Consider warehouse settings in Databricks UI for cost optimization
+```
+
+#### Unity Catalog Access
+
+```yaml
+# Specify full three-part names for Unity Catalog tables
+- name: unity_catalog_check
+  dataset: catalog_name.schema_name.table_name
+  type: row_count
+  condition: gt
+  threshold: 100
+```
+
+#### Large Result Sets
+
+```yaml
+# Use LIMIT for sampling large tables
+- name: sample_data_check
+  dataset: |
+    SELECT * FROM large_table 
+    TABLESAMPLE (1000 ROWS)  -- Databricks sampling
+  type: row_count
+  condition: eq
+  threshold: 1000
+```
+
+## BigQuery
+
+BigQuery is Google Cloud's fully-managed data warehouse that supports all Weiser check types. The BigQuery connector provides native support for Google Cloud authentication, regional datasets, and BigQuery-specific SQL features.
+
+### Configuration
+
+#### Basic Connection
+
+```yaml
+datasources:
+  - name: bigquery_prod
+    type: bigquery
+    project_id: my-gcp-project
+    dataset_id: production_data
+    credentials_path: /path/to/service-account.json
+```
+
+#### Connection with Location
+
+```yaml
+datasources:
+  - name: bigquery_eu
+    type: bigquery
+    project_id: my-gcp-project
+    dataset_id: eu_dataset
+    location: europe-west1
+    credentials_path: /path/to/service-account.json
+```
+
+#### Connection URI
+
+```yaml
+datasources:
+  - name: bigquery_warehouse
+    type: bigquery
+    uri: bigquery://my-project/my-dataset?credentials_path=/path/to/creds.json&location=us-central1
+```
+
+#### Environment Variables (Recommended)
+
+```yaml
+datasources:
+  - name: bigquery_prod
+    type: bigquery
+    project_id: {{GCP_PROJECT_ID}}
+    dataset_id: {{BIGQUERY_DATASET}}
+    credentials_path: {{GOOGLE_APPLICATION_CREDENTIALS}}
+    location: {{BIGQUERY_LOCATION}}
+```
+
+### Connection Parameters
+
+| Parameter         | Required | Default | Description                                                |
+| ----------------- | -------- | ------- | ---------------------------------------------------------- |
+| `name`            | Yes      | -       | Unique datasource identifier                               |
+| `type`            | Yes      | -       | Must be `bigquery`                                         |
+| `project_id`      | Yes\*    | -       | Google Cloud project ID                                    |
+| `dataset_id`      | No       | -       | Default dataset ID to use                                  |
+| `db_name`         | No       | -       | Alternative to dataset_id (fallback)                      |
+| `credentials_path`| No       | -       | Path to service account JSON file                          |
+| `location`        | No       | -       | Dataset location (e.g., us-central1, europe-west1)        |
+| `uri`             | Yes\*    | -       | Complete connection URI (alternative to individual params) |
+
+\*Either individual parameters OR uri is required
+
+### Setup Requirements
+
+#### 1. Google Cloud Project Setup
+
+1. Create or select a Google Cloud project
+2. Enable the BigQuery API
+3. Create a service account with BigQuery permissions
+4. Download the service account JSON key file
+
+#### 2. Service Account Permissions
+
+```bash
+# Grant BigQuery Data Viewer role
+gcloud projects add-iam-policy-binding my-gcp-project \
+    --member="serviceAccount:weiser@my-gcp-project.iam.gserviceaccount.com" \
+    --role="roles/bigquery.dataViewer"
+
+# Grant BigQuery Job User role (for running queries)
+gcloud projects add-iam-policy-binding my-gcp-project \
+    --member="serviceAccount:weiser@my-gcp-project.iam.gserviceaccount.com" \
+    --role="roles/bigquery.jobUser"
+```
+
+#### 3. Authentication Methods
+
+**Option A: Service Account Key File**
+```yaml
+datasources:
+  - name: bigquery_prod
+    type: bigquery
+    project_id: my-gcp-project
+    credentials_path: /path/to/service-account.json
+```
+
+**Option B: Environment Variable**
+```bash
+export GOOGLE_APPLICATION_CREDENTIALS="/path/to/service-account.json"
+```
+
+**Option C: Application Default Credentials (GCP environments)**
+```yaml
+# No credentials_path needed when running on GCP
+datasources:
+  - name: bigquery_prod
+    type: bigquery
+    project_id: my-gcp-project
+```
+
+### Supported Features
+
+| Feature                   | BigQuery Support |
+| ------------------------- | ---------------- |
+| **Row Count Checks**      | ✅ Full Support  |
+| **Numeric Checks**        | ✅ Full Support  |
+| **Sum/Min/Max Checks**    | ✅ Full Support  |
+| **Not Empty Checks**      | ✅ Full Support  |
+| **Anomaly Detection**     | ✅ Full Support  |
+| **Custom SQL**            | ✅ Full Support  |
+| **Time Dimensions**       | ✅ Full Support  |
+| **Dimensions/Grouping**   | ✅ Full Support  |
+| **Complex Filters**       | ✅ Full Support  |
+| **Window Functions**      | ✅ Full Support  |
+| **Statistical Functions** | ✅ Full Support  |
+| **Standard SQL**          | ✅ Full Support  |
+
+### BigQuery-Specific Examples
+
+#### Using BigQuery Date Functions
+
+```yaml
+- name: recent_data_check
+  dataset: orders
+  type: row_count
+  condition: gt
+  threshold: 100
+  filter: created_at >= DATE_SUB(CURRENT_DATE(), INTERVAL 7 DAY)
+```
+
+#### Cross-Dataset Queries
+
+```yaml
+- name: cross_dataset_check
+  dataset: "`my-project.dataset1.orders` o JOIN `my-project.dataset2.customers` c ON o.customer_id = c.id"
+  type: row_count
+  condition: gt
+  threshold: 1000
+```
+
+#### Using BigQuery Array Functions
+
+```yaml
+- name: array_data_check
+  dataset: events
+  type: numeric
+  measure: ARRAY_LENGTH(event_tags)
+  condition: between
+  threshold: [1, 10]
+  filter: event_date = CURRENT_DATE()
+```
+
+#### Partitioned Table Queries
+
+```yaml
+- name: partition_efficiency_check
+  dataset: "`my-project.analytics.events`"
+  type: row_count
+  condition: gt
+  threshold: 10000
+  filter: _PARTITIONTIME >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 1 DAY)
+```
+
+### Performance Optimization
+
+#### Query Optimization
+
+```sql
+-- Use clustering and partitioning for large tables
+CREATE TABLE `my-project.analytics.events`
+(
+  event_timestamp TIMESTAMP,
+  user_id STRING,
+  event_name STRING,
+  event_data JSON
+)
+PARTITION BY DATE(event_timestamp)
+CLUSTER BY user_id, event_name;
+```
+
+#### Cost Management
+
+```yaml
+# Use specific datasets to limit query scope
+- name: cost_efficient_check
+  dataset: "`my-project.production.orders`"  # Specific table reference
+  type: row_count
+  condition: gt
+  threshold: 1000
+  filter: DATE(created_at) = CURRENT_DATE()  # Partition pruning
+```
+
+#### Regional Optimization
+
+```yaml
+# Use location parameter for regional datasets
+datasources:
+  - name: bigquery_eu
+    type: bigquery
+    project_id: my-gcp-project
+    dataset_id: eu_dataset
+    location: europe-west1  # Reduces latency for EU data
+```
+
+### Common Issues & Solutions
+
+#### Authentication Errors
+
+```yaml
+# Ensure service account has proper permissions
+datasources:
+  - name: bigquery_prod
+    type: bigquery
+    project_id: my-gcp-project
+    credentials_path: /path/to/service-account.json  # Must have BigQuery permissions
+```
+
+#### Dataset Access Issues
+
+```yaml
+# Use fully qualified table names for cross-project access
+- name: cross_project_check
+  dataset: "`other-project.public_data.table_name`"
+  type: row_count
+  condition: gt
+  threshold: 100
+```
+
+#### Query Quotas and Limits
+
+```yaml
+# Use LIMIT for large table sampling
+- name: sample_data_check
+  dataset: |
+    SELECT * FROM `my-project.large_dataset.big_table`
+    TABLESAMPLE SYSTEM (1 PERCENT)  -- BigQuery sampling
+  type: row_count
+  condition: gt
+  threshold: 1000
+```
+
+#### Slot Availability
+
+```yaml
+# Consider query priority and complexity
+# BigQuery automatically manages slot allocation
+# For consistent performance, consider reservations for production workloads
+```
+
+### Cost Considerations
+
+#### Query Costs
+
+- BigQuery charges based on data processed
+- Use partition pruning and clustering for cost efficiency
+- Consider query caching for repeated checks
+
+#### Best Practices
+
+```yaml
+# Efficient date filtering
+- name: cost_efficient_check
+  dataset: orders
+  type: row_count
+  condition: gt
+  threshold: 100
+  filter: DATE(created_at) = CURRENT_DATE()  # Uses partition pruning
+
+# Avoid SELECT * on large tables
+- name: specific_column_check
+  dataset: |
+    SELECT order_id, status FROM orders
+    WHERE DATE(created_at) = CURRENT_DATE()
+  type: row_count
+  condition: gt
+  threshold: 50
+```
+
+## Cube
+
+Cube is a semantic layer that allows you to define business metrics and dimensions. Weiser integrates with Cube to run data quality checks on these metrics.
+Cube implements the PostgreSQL interface, so you can use the same configuration as PostgreSQL. Visit the [Cube documentation](https://cube.dev/docs) for more details on setting up Cube.
+
+## Contributing
+
+Help us expand datasource support! We welcome contributions for:
+
+- New database connectors
+- Performance optimizations
+- Documentation improvements
+- Testing and validation
+
+See our [GitHub repository](https://github.com/weiser-ai/weiser) for contribution guidelines.
+
+## Getting Help
+
+- 📚 [Configuration Reference](./configuration.md)
+- 🔧 [Getting Started Guide](./tutorial/getting-started.md)
+- 💬 [GitHub Issues](https://github.com/weiser-ai/weiser/issues)
+- 📖 [Check Types Documentation](./check-types/index.md)
+
+========================================================================
+URL: https://weiser.ai/docs/check-types.md
+========================================================================
+
+# Check Types
+
+Weiser supports various types of data quality checks to validate different aspects of your data. Each check type serves a specific purpose and can be configured with different conditions and thresholds.
+
+## Available Check Types
+
+### Basic Checks
+- [**Row Count**](./row-count.md) - Validates the number of rows in a dataset
+- [**Numeric**](./numeric.md) - Custom numeric expressions and calculations  
+- [**Sum**](./sum.md) - Validates the sum of a numeric column
+- [**Min**](./min.md) - Validates the minimum value of a column
+- [**Max**](./max.md) - Validates the maximum value of a column
+- [**Measure**](./measure.md) - Cube.js specific measure validation
+
+### Data Completeness Checks
+- [**Not Empty**](./not-empty.md) - Validates NULL values in dimensions (count-based)
+- [**Not Empty Percentage**](./not-empty-pct.md) - Validates NULL values in dimensions (percentage-based)
+
+### Advanced Checks
+- [**Anomaly Detection**](./anomaly.md) - Detects anomalies using statistical methods
+
+## Common Configuration
+
+All checks share common configuration options:
+
+- **name**: Unique identifier for the check
+- **dataset**: Target table or SQL query
+- **type**: The check type (see list above)
+- **condition**: Comparison operator (`gt`, `ge`, `lt`, `le`, `eq`, `neq`, `between`)
+- **threshold**: Value(s) to compare against
+- **dimensions**: Group by columns (optional)
+- **filter**: WHERE clause conditions (optional)
+- **time_dimension**: Time-based aggregation (optional)
+
+## Example Configuration
+
+```yaml
+checks:
+  - name: orders_row_count
+    dataset: orders
+    type: row_count
+    condition: gt
+    threshold: 1000
+    
+  - name: revenue_sum_by_region
+    dataset: sales
+    type: sum
+    measure: revenue
+    dimensions: [region]
+    condition: ge
+    threshold: 50000
+```
+
+========================================================================
+URL: https://weiser.ai/docs/check-types/row-count.md
+========================================================================
+
+# Row Count Check
+
+The `row_count` check validates the number of rows in a dataset. This is one of the most basic and commonly used data quality checks.
+
+## Configuration
+
+| Parameter | Required | Description |
+|-----------|----------|-------------|
+| `name` | Yes | Unique name for the check |
+| `dataset` | Yes | Table name or SQL query |
+| `type` | Yes | Must be `row_count` |
+| `condition` | Yes | Comparison operator |
+| `threshold` | Yes | Expected row count value |
+| `dimensions` | No | Group by columns |
+| `filter` | No | WHERE clause conditions |
+
+## Examples
+
+### Basic Row Count Check
+
+```yaml
+- name: orders_minimum_rows
+  dataset: orders
+  type: row_count
+  condition: gt
+  threshold: 0
+```
+
+This check ensures the orders table has more than 0 rows.
+
+### Row Count with Filter
+
+```yaml
+- name: active_users_count
+  dataset: users
+  type: row_count
+  condition: ge
+  threshold: 100
+  filter: status = 'active'
+```
+
+This check validates that there are at least 100 active users.
+
+### Row Count by Dimensions
+
+```yaml
+- name: orders_by_region
+  dataset: orders
+  type: row_count
+  dimensions: [region, status]
+  condition: gt
+  threshold: 10
+```
+
+This check ensures each region/status combination has more than 10 orders.
+
+### Row Count with Time Dimension
+
+```yaml
+- name: daily_orders_count
+  dataset: orders
+  type: row_count
+  condition: gt
+  threshold: 50
+  time_dimension:
+    name: created_at
+    granularity: day
+```
+
+This check validates that each day has more than 50 orders.
+
+## Use Cases
+
+- **Data Freshness**: Ensure new data is being loaded
+- **Completeness**: Verify expected data volume
+- **Business Rules**: Validate minimum activity levels
+- **Monitoring**: Track growth or decline in data volume
+
+## Generated SQL
+
+The row count check generates SQL similar to:
+
+```sql
+SELECT COUNT(*) 
+FROM orders 
+WHERE status = 'active'
+```
+
+With dimensions:
+```sql
+SELECT region, status, COUNT(*) 
+FROM orders 
+GROUP BY region, status
+```
+
+========================================================================
+URL: https://weiser.ai/docs/check-types/numeric.md
+========================================================================
+
+# Numeric Check
+
+The `numeric` check allows you to validate custom numeric expressions and calculations. This is the most flexible check type for complex business logic validation.
+
+## Configuration
+
+| Parameter | Required | Description |
+|-----------|----------|-------------|
+| `name` | Yes | Unique name for the check |
+| `dataset` | Yes | Table name or SQL query |
+| `type` | Yes | Must be `numeric` |
+| `measure` | Yes | SQL expression to evaluate |
+| `condition` | Yes | Comparison operator |
+| `threshold` | Yes | Value to compare against |
+| `dimensions` | No | Group by columns |
+| `filter` | No | WHERE clause conditions |
+
+## Examples
+
+### Basic Numeric Check
+
+```yaml
+- name: average_order_value
+  dataset: orders
+  type: numeric
+  measure: AVG(order_amount)
+  condition: gt
+  threshold: 50.0
+```
+
+This check ensures the average order value is greater than $50.
+
+### Complex Expression
+
+```yaml
+- name: conversion_rate
+  dataset: >
+    SELECT 
+      campaign_id,
+      SUM(CASE WHEN status = 'converted' THEN 1 ELSE 0 END) as conversions,
+      COUNT(*) as total_leads
+    FROM marketing_leads 
+    GROUP BY campaign_id
+  type: numeric
+  measure: CAST(conversions AS FLOAT) / CAST(total_leads AS FLOAT)
+  condition: ge
+  threshold: 0.05  # 5% minimum conversion rate
+```
+
+This check validates that conversion rates are at least 5%.
+
+### Numeric with Dimensions
+
+```yaml
+- name: revenue_by_region
+  dataset: sales
+  type: numeric
+  measure: SUM(revenue)
+  dimensions: [region, quarter]
+  condition: gt
+  threshold: 100000
+```
+
+This check ensures each region/quarter combination has revenue > $100K.
+
+### Using Window Functions
+
+```yaml
+- name: month_over_month_growth
+  dataset: monthly_sales
+  type: numeric
+  measure: |
+    (current_month_sales - LAG(current_month_sales) OVER (ORDER BY month)) 
+    / LAG(current_month_sales) OVER (ORDER BY month)
+  condition: gt
+  threshold: 0.0  # Positive growth
+```
+
+This check validates month-over-month growth is positive.
+
+### Statistical Analysis
+
+The numeric check is powerful for statistical validation and data quality assessment.
+
+#### Standard Deviation Analysis
+
+```yaml
+- name: price_variance_control
+  dataset: products
+  type: numeric
+  measure: STDDEV(price)
+  condition: le
+  threshold: 50.0
+  description: "Ensure price variance is within acceptable range"
+```
+
+This check ensures product prices don't vary too widely, indicating consistent pricing strategy.
+
+#### Coefficient of Variation
+
+```yaml
+- name: sales_consistency
+  dataset: daily_sales
+  type: numeric
+  measure: STDDEV(daily_revenue) / AVG(daily_revenue)
+  condition: le
+  threshold: 0.3  # Max 30% coefficient of variation
+  dimensions: [region]
+```
+
+This validates that sales are relatively consistent across regions (low coefficient of variation).
+
+#### Outlier Detection with Z-Score
+
+```yaml
+- name: outlier_detection
+  dataset: |
+    SELECT 
+      customer_id,
+      order_amount,
+      (order_amount - AVG(order_amount) OVER()) / STDDEV(order_amount) OVER() as z_score
+    FROM orders
+    WHERE created_at >= CURRENT_DATE - INTERVAL '30 days'
+  type: numeric
+  measure: COUNT(CASE WHEN ABS(z_score) > 3 THEN 1 END)
+  condition: le
+  threshold: 5  # Max 5 statistical outliers
+```
+
+This check counts orders with z-scores beyond 3 standard deviations, limiting extreme outliers.
+
+#### Percentile Analysis
+
+```yaml
+- name: response_time_p95
+  dataset: api_logs
+  type: numeric
+  measure: PERCENTILE_CONT(0.95) WITHIN GROUP (ORDER BY response_time_ms)
+  condition: le
+  threshold: 2000  # 95th percentile under 2 seconds
+  time_dimension:
+    name: timestamp
+    granularity: hour
+```
+
+This validates that 95% of API responses are under 2 seconds.
+
+#### Interquartile Range (IQR) Analysis
+
+```yaml
+- name: transaction_amount_iqr
+  dataset: transactions
+  type: numeric
+  measure: |
+    PERCENTILE_CONT(0.75) WITHIN GROUP (ORDER BY amount) - 
+    PERCENTILE_CONT(0.25) WITHIN GROUP (ORDER BY amount)
+  condition: le
+  threshold: 1000
+  description: "Ensure transaction amounts have reasonable spread"
+```
+
+This check monitors the interquartile range to detect unusual spread in transaction amounts.
+
+#### Correlation Analysis
+
+```yaml
+- name: price_quantity_correlation
+  dataset: order_items
+  type: numeric
+  measure: |
+    CORR(unit_price, quantity)
+  condition: between
+  threshold: [-0.3, 0.3]  # Weak correlation expected
+  description: "Price and quantity should have minimal correlation"
+```
+
+This validates that price and quantity aren't strongly correlated, which might indicate pricing issues.
+
+#### Data Distribution Validation
+
+```yaml
+- name: order_amount_skewness
+  dataset: |
+    SELECT 
+      order_amount,
+      AVG(order_amount) OVER() as mean_amount,
+      STDDEV(order_amount) OVER() as std_amount
+    FROM orders
+    WHERE order_amount > 0
+  type: numeric
+  measure: |
+    AVG(POWER((order_amount - mean_amount) / std_amount, 3))
+  condition: between
+  threshold: [-2.0, 2.0]  # Acceptable skewness range
+  description: "Order amounts should have reasonable distribution"
+```
+
+This check calculates skewness to ensure order amounts follow a reasonable distribution.
+
+#### Time Series Statistical Analysis
+
+```yaml
+- name: daily_sales_trend_analysis
+  dataset: |
+    SELECT 
+      DATE(created_at) as sale_date,
+      SUM(order_amount) as daily_total,
+      ROW_NUMBER() OVER (ORDER BY DATE(created_at)) as day_number
+    FROM orders
+    WHERE created_at >= CURRENT_DATE - INTERVAL '90 days'
+    GROUP BY DATE(created_at)
+  type: numeric
+  measure: |
+    CORR(day_number, daily_total)
+  condition: ge
+  threshold: -0.1  # Slight negative trend acceptable
+  description: "Sales trend should not be strongly declining"
+```
+
+This analyzes sales trends over time using correlation with day numbers.
+
+## Supported SQL Functions
+
+The `measure` parameter supports any valid SQL expression, including:
+
+- **Aggregation Functions**: `SUM()`, `AVG()`, `COUNT()`, `MIN()`, `MAX()`
+- **Mathematical Functions**: `ROUND()`, `ABS()`, `SQRT()`, etc.
+- **Conditional Logic**: `CASE WHEN ... THEN ... ELSE ... END`
+- **Window Functions**: `LAG()`, `LEAD()`, `ROW_NUMBER()`, etc.
+- **Type Casting**: `CAST(column AS FLOAT)`
+- **Date Functions**: `DATE_TRUNC()`, `EXTRACT()`, etc.
+
+## Use Cases
+
+- **Business Metrics**: Revenue, conversion rates, customer metrics
+- **Data Quality**: Calculate data quality scores
+- **Performance KPIs**: Response times, success rates
+- **Financial Validation**: Balances, totals, ratios
+- **Custom Logic**: Any complex business rule
+
+## Generated SQL
+
+The numeric check generates SQL like:
+
+```sql
+SELECT AVG(order_amount)
+FROM orders
+WHERE status = 'completed'
+```
+
+With dimensions:
+```sql
+SELECT region, quarter, SUM(revenue)
+FROM sales
+GROUP BY region, quarter
+```
+
+## Example Results
+
+```
+✓ average_order_value: 67.50 (> 50.0)
+✗ conversion_rate: 0.03 (≥ 0.05)
+✓ revenue_by_region_east_q1: 125000 (> 100000)
+```
+
+## Tips
+
+1. **Type Casting**: Use `CAST()` for precise decimal calculations
+2. **NULL Handling**: Consider `COALESCE()` or `ISNULL()` for NULL values
+3. **Performance**: Use appropriate indexes for complex expressions
+4. **Testing**: Test expressions in your database before adding to checks
+
+## Related Checks
+
+- [**Sum**](./sum.md) - Simplified sum aggregation
+- [**Measure**](./measure.md) - Cube.js specific measures
+
+========================================================================
+URL: https://weiser.ai/docs/check-types/sum.md
+========================================================================
+
+# Sum Check
+
+The `sum` check validates the sum of a numeric column. This is a specialized version of the numeric check optimized for sum aggregations.
+
+## Configuration
+
+| Parameter | Required | Description |
+|-----------|----------|-------------|
+| `name` | Yes | Unique name for the check |
+| `dataset` | Yes | Table name or SQL query |
+| `type` | Yes | Must be `sum` |
+| `measure` | Yes | Column name to sum |
+| `condition` | Yes | Comparison operator |
+| `threshold` | Yes | Value to compare against |
+| `dimensions` | No | Group by columns |
+| `filter` | No | WHERE clause conditions |
+
+## Examples
+
+### Basic Sum Check
+
+```yaml
+- name: total_revenue
+  dataset: orders
+  type: sum
+  measure: order_amount
+  condition: ge
+  threshold: 1000000
+```
+
+This check ensures total revenue is at least $1M.
+
+### Sum with Filter
+
+```yaml
+- name: completed_orders_revenue
+  dataset: orders
+  type: sum
+  measure: order_amount
+  condition: gt
+  threshold: 500000
+  filter: status = 'completed'
+```
+
+This check validates that completed orders total more than $500K.
+
+### Sum by Dimensions
+
+```yaml
+- name: revenue_by_region
+  dataset: sales
+  type: sum
+  measure: revenue
+  dimensions: [region]
+  condition: ge
+  threshold: 100000
+```
+
+This check ensures each region has at least $100K in revenue.
+
+### Sum with Time Dimension
+
+```yaml
+- name: daily_sales_sum
+  dataset: transactions
+  type: sum
+  measure: amount
+  condition: gt
+  threshold: 10000
+  time_dimension:
+    name: transaction_date
+    granularity: day
+```
+
+This check validates daily sales exceed $10K.
+
+### Multiple Dimensions
+
+```yaml
+- name: product_sales_by_region_quarter
+  dataset: sales
+  type: sum
+  measure: sales_amount
+  dimensions: [region, product_category, quarter]
+  condition: ge
+  threshold: 25000
+```
+
+This check ensures each region/product/quarter combination has at least $25K in sales.
+
+## Use Cases
+
+- **Revenue Validation**: Ensure minimum revenue targets
+- **Financial Controls**: Validate total amounts in accounting
+- **Performance Monitoring**: Track sum metrics over time
+- **Data Quality**: Ensure calculated totals are reasonable
+- **Business Rules**: Validate sum-based business requirements
+
+## Generated SQL
+
+The sum check generates SQL like:
+
+```sql
+SELECT SUM(order_amount)
+FROM orders
+WHERE status = 'completed'
+```
+
+With dimensions:
+```sql
+SELECT region, SUM(revenue)
+FROM sales
+GROUP BY region
+```
+
+## Example Results
+
+```
+✓ total_revenue: 1250000 (≥ 1000000)
+✗ completed_orders_revenue: 450000 (> 500000)
+✓ revenue_by_region_east: 125000 (≥ 100000)
+✓ revenue_by_region_west: 175000 (≥ 100000)
+```
+
+## Data Types
+
+The `measure` column should be numeric. Common types include:
+- `INTEGER`
+- `DECIMAL` / `NUMERIC`
+- `FLOAT` / `DOUBLE`
+- `MONEY` (database-specific)
+
+## NULL Handling
+
+- `SUM()` ignores NULL values automatically
+- If all values are NULL, `SUM()` returns NULL
+- Consider using filters or data cleaning if NULL handling is critical
+
+## Performance Tips
+
+1. **Indexes**: Ensure the measure column has appropriate indexes
+2. **Partitioning**: Use time-based partitioning for large datasets
+3. **Filters**: Apply filters to reduce data volume
+4. **Materialized Views**: Pre-calculate sums for frequently checked aggregations
+
+## Related Checks
+
+- [**Numeric**](./numeric.md) - More flexible numeric expressions
+- [**Min**](./min.md) - Minimum value validation
+- [**Max**](./max.md) - Maximum value validation
+
+========================================================================
+URL: https://weiser.ai/docs/check-types/min.md
+========================================================================
+
+# Min Check
+
+The `min` check validates the minimum value of a numeric column. This check helps ensure data quality by validating that the smallest values in your dataset meet expectations.
+
+## Configuration
+
+| Parameter | Required | Description |
+|-----------|----------|-------------|
+| `name` | Yes | Unique name for the check |
+| `dataset` | Yes | Table name or SQL query |
+| `type` | Yes | Must be `min` |
+| `measure` | Yes | Column name to find minimum |
+| `condition` | Yes | Comparison operator |
+| `threshold` | Yes | Value to compare against |
+| `dimensions` | No | Group by columns |
+| `filter` | No | WHERE clause conditions |
+
+## Examples
+
+### Basic Min Check
+
+```yaml
+- name: minimum_order_amount
+  dataset: orders
+  type: min
+  measure: order_amount
+  condition: ge
+  threshold: 1.0
+```
+
+This check ensures the smallest order is at least $1.
+
+### Min with Filter
+
+```yaml
+- name: min_product_price
+  dataset: products
+  type: min
+  measure: price
+  condition: gt
+  threshold: 0
+  filter: status = 'active'
+```
+
+This check validates that all active products have a price greater than 0.
+
+### Min by Dimensions
+
+```yaml
+- name: min_salary_by_department
+  dataset: employees
+  type: min
+  measure: salary
+  dimensions: [department]
+  condition: ge
+  threshold: 30000
+```
+
+This check ensures minimum salary in each department is at least $30K.
+
+### Min with Time Dimension
+
+```yaml
+- name: daily_min_temperature
+  dataset: sensor_readings
+  type: min
+  measure: temperature
+  condition: gt
+  threshold: -40
+  time_dimension:
+    name: reading_date
+    granularity: day
+```
+
+This check validates daily minimum temperature is above -40°.
+
+## Use Cases
+
+- **Data Quality**: Ensure no unreasonably low values
+- **Business Rules**: Validate minimum acceptable values
+- **Range Validation**: Check lower bounds of data ranges
+- **Outlier Detection**: Identify potentially problematic minimum values
+- **Compliance**: Ensure minimum standards are met
+
+## Generated SQL
+
+The min check generates SQL like:
+
+```sql
+SELECT MIN(order_amount)
+FROM orders
+WHERE status = 'completed'
+```
+
+With dimensions:
+```sql
+SELECT department, MIN(salary)
+FROM employees
+GROUP BY department
+```
+
+## Example Results
+
+```
+✓ minimum_order_amount: 5.50 (≥ 1.0)
+✗ min_product_price: 0.00 (> 0)
+✓ min_salary_by_department_engineering: 65000 (≥ 30000)
+✓ min_salary_by_department_sales: 35000 (≥ 30000)
+```
+
+## Data Types
+
+The `measure` column should be numeric or comparable. Common types include:
+- `INTEGER`
+- `DECIMAL` / `NUMERIC` 
+- `FLOAT` / `DOUBLE`
+- `DATE` / `TIMESTAMP`
+- `TIME`
+
+## NULL Handling
+
+- `MIN()` ignores NULL values automatically
+- If all values are NULL, `MIN()` returns NULL
+- The check will fail if MIN() returns NULL (unless specifically handled)
+
+## Common Patterns
+
+### Price Validation
+```yaml
+- name: positive_prices
+  dataset: products
+  type: min
+  measure: price
+  condition: gt
+  threshold: 0
+```
+
+### Date Range Validation
+```yaml
+- name: recent_data
+  dataset: transactions
+  type: min
+  measure: transaction_date
+  condition: ge
+  threshold: '2024-01-01'
+```
+
+### Performance Metrics
+```yaml
+- name: minimum_response_time
+  dataset: api_logs
+  type: min
+  measure: response_time_ms
+  condition: le
+  threshold: 5000  # Max acceptable minimum response time
+```
+
+## Performance Tips
+
+1. **Indexes**: Ensure the measure column has appropriate indexes
+2. **Partitioning**: Use partitioning for time-based queries
+3. **Filters**: Apply filters to reduce data scanning
+4. **Statistics**: Keep table statistics updated for query optimization
+
+## Related Checks
+
+- [**Max**](./max.md) - Maximum value validation
+- [**Sum**](./sum.md) - Sum aggregation validation
+- [**Numeric**](./numeric.md) - Custom numeric expressions
+
+========================================================================
+URL: https://weiser.ai/docs/check-types/max.md
+========================================================================
+
+# Max Check
+
+The `max` check validates the maximum value of a numeric column. This check helps ensure data quality by validating that the largest values in your dataset meet expectations and don't exceed reasonable bounds.
+
+## Configuration
+
+| Parameter | Required | Description |
+|-----------|----------|-------------|
+| `name` | Yes | Unique name for the check |
+| `dataset` | Yes | Table name or SQL query |
+| `type` | Yes | Must be `max` |
+| `measure` | Yes | Column name to find maximum |
+| `condition` | Yes | Comparison operator |
+| `threshold` | Yes | Value to compare against |
+| `dimensions` | No | Group by columns |
+| `filter` | No | WHERE clause conditions |
+
+## Examples
+
+### Basic Max Check
+
+```yaml
+- name: maximum_order_amount
+  dataset: orders
+  type: max
+  measure: order_amount
+  condition: le
+  threshold: 10000
+```
+
+This check ensures no order exceeds $10,000.
+
+### Max with Filter
+
+```yaml
+- name: max_discount_percentage
+  dataset: promotions
+  type: max
+  measure: discount_percentage
+  condition: le
+  threshold: 0.5
+  filter: status = 'active'
+```
+
+This check validates that active promotions don't exceed 50% discount.
+
+### Max by Dimensions
+
+```yaml
+- name: max_salary_by_level
+  dataset: employees
+  type: max
+  measure: salary
+  dimensions: [job_level]
+  condition: le
+  threshold: 200000
+```
+
+This check ensures maximum salary per job level doesn't exceed $200K.
+
+### Max with Time Dimension
+
+```yaml
+- name: daily_max_temperature
+  dataset: sensor_readings
+  type: max
+  measure: temperature
+  condition: le
+  threshold: 45
+  time_dimension:
+    name: reading_date
+    granularity: day
+```
+
+This check validates daily maximum temperature stays below 45°.
+
+## Use Cases
+
+- **Data Quality**: Ensure no unreasonably high values
+- **Business Rules**: Validate maximum acceptable limits
+- **Range Validation**: Check upper bounds of data ranges
+- **Outlier Detection**: Identify potentially problematic maximum values
+- **Security**: Prevent values that might indicate data issues or attacks
+- **Compliance**: Ensure maximum limits are not exceeded
+
+## Generated SQL
+
+The max check generates SQL like:
+
+```sql
+SELECT MAX(order_amount)
+FROM orders
+WHERE status = 'completed'
+```
+
+With dimensions:
+```sql
+SELECT job_level, MAX(salary)
+FROM employees
+GROUP BY job_level
+```
+
+## Example Results
+
+```
+✓ maximum_order_amount: 8500.00 (≤ 10000)
+✗ max_discount_percentage: 0.75 (≤ 0.5)
+✓ max_salary_by_level_senior: 180000 (≤ 200000)
+✗ max_salary_by_level_executive: 250000 (≤ 200000)
+```
+
+## Data Types
+
+The `measure` column should be numeric or comparable. Common types include:
+- `INTEGER`
+- `DECIMAL` / `NUMERIC`
+- `FLOAT` / `DOUBLE`
+- `DATE` / `TIMESTAMP`
+- `TIME`
+
+## NULL Handling
+
+- `MAX()` ignores NULL values automatically
+- If all values are NULL, `MAX()` returns NULL
+- The check will fail if MAX() returns NULL (unless specifically handled)
+
+## Common Patterns
+
+### Fraud Detection
+```yaml
+- name: suspicious_transaction_amount
+  dataset: transactions
+  type: max
+  measure: amount
+  condition: le
+  threshold: 100000
+  dimensions: [user_id]
+```
+
+### Performance Monitoring
+```yaml
+- name: max_response_time
+  dataset: api_logs
+  type: max
+  measure: response_time_ms
+  condition: le
+  threshold: 30000  # 30 seconds max
+```
+
+### Data Validation
+```yaml
+- name: age_upper_bound
+  dataset: users
+  type: max
+  measure: age
+  condition: le
+  threshold: 120  # Reasonable max age
+```
+
+### System Limits
+```yaml
+- name: max_file_size
+  dataset: uploads
+  type: max
+  measure: file_size_bytes
+  condition: le
+  threshold: 104857600  # 100MB max
+```
+
+## Performance Tips
+
+1. **Indexes**: Ensure the measure column has appropriate indexes
+2. **Partitioning**: Use partitioning for time-based queries
+3. **Filters**: Apply filters to reduce data scanning
+4. **Statistics**: Keep table statistics updated for query optimization
+
+## Alerting Scenarios
+
+Max checks are particularly useful for alerting on:
+- **Anomalous spikes** in transaction amounts
+- **Performance degradation** (response times, queue lengths)
+- **Resource exhaustion** (disk usage, memory consumption)
+- **Data quality issues** (unrealistic values)
+
+## Related Checks
+
+- [**Min**](./min.md) - Minimum value validation
+- [**Sum**](./sum.md) - Sum aggregation validation
+- [**Numeric**](./numeric.md) - Custom numeric expressions
+
+========================================================================
+URL: https://weiser.ai/docs/check-types/measure.md
+========================================================================
+
+# Measure Check
+
+The `measure` check is specifically designed for Cube.js semantic layer validation. It validates pre-defined measures from your Cube.js data model, making it ideal for semantic layer data quality checks.
+
+## Configuration
+
+| Parameter | Required | Description |
+|-----------|----------|-------------|
+| `name` | Yes | Unique name for the check |
+| `dataset` | Yes | Cube name or SQL query |
+| `type` | Yes | Must be `measure` |
+| `measure` | Yes | Cube.js measure name |
+| `condition` | Yes | Comparison operator |
+| `threshold` | Yes | Value to compare against |
+| `dimensions` | No | Cube.js dimensions for grouping |
+| `filter` | No | WHERE clause conditions |
+
+## Prerequisites
+
+- Cube.js instance must be running and accessible
+- Datasource must be configured with `type: cube`
+- Measures must be defined in your Cube.js schema
+
+## Examples
+
+### Basic Measure Check
+
+```yaml
+- name: total_revenue_measure
+  dataset: Orders
+  type: measure
+  measure: totalRevenue
+  condition: ge
+  threshold: 1000000
+```
+
+This check validates the `totalRevenue` measure from the Orders cube.
+
+### Measure with Dimensions
+
+```yaml
+- name: revenue_by_region
+  dataset: Sales
+  type: measure
+  measure: revenue
+  dimensions: [region, quarter]
+  condition: gt
+  threshold: 50000
+```
+
+This check ensures revenue by region and quarter exceeds $50K.
+
+### Complex Measure
+
+```yaml
+- name: customer_lifetime_value
+  dataset: Customers
+  type: measure
+  measure: lifetimeValue
+  dimensions: [customerSegment]
+  condition: ge
+  threshold: 500
+```
+
+This check validates customer lifetime value by segment.
+
+### Time-based Measure
+
+```yaml
+- name: monthly_active_users
+  dataset: Users
+  type: measure
+  measure: monthlyActiveUsers
+  condition: gt
+  threshold: 10000
+  time_dimension:
+    name: createdAt
+    granularity: month
+```
+
+This check ensures monthly active users exceed 10K.
+
+## Cube.js Integration
+
+### Sample Cube Schema
+
+```javascript
+// schemas/Orders.js
+cube(`Orders`, {
+  sql: `SELECT * FROM orders`,
+  
+  measures: {
+    totalRevenue: {
+      type: `sum`,
+      sql: `order_amount`
+    },
+    
+    averageOrderValue: {
+      type: `avg`,
+      sql: `order_amount`
+    },
+    
+    orderCount: {
+      type: `count`
+    }
+  },
+  
+  dimensions: {
+    region: {
+      sql: `region`,
+      type: `string`
+    },
+    
+    createdAt: {
+      sql: `created_at`,
+      type: `time`
+    }
+  }
+});
+```
+
+### Datasource Configuration
+
+```yaml
+datasources:
+  - name: cube
+    type: cube
+    uri: http://localhost:4000/cubejs-api/v1
+```
+
+## Generated SQL
+
+The measure check generates Cube.js API calls that translate to optimized SQL:
+
+```sql
+-- Generated by Cube.js for totalRevenue measure
+SELECT SUM(order_amount) as totalRevenue
+FROM orders
+```
+
+With dimensions:
+```sql
+-- Generated by Cube.js with dimensions
+SELECT 
+  region,
+  quarter,
+  SUM(order_amount) as revenue
+FROM orders
+GROUP BY region, quarter
+```
+
+## Use Cases
+
+- **Semantic Layer Validation**: Ensure business metrics are correct
+- **KPI Monitoring**: Validate key performance indicators
+- **Business Rules**: Check calculated business measures
+- **Data Consistency**: Ensure measures match expectations
+- **Cube.js Testing**: Validate Cube.js schema definitions
+
+## Advantages over Raw SQL
+
+1. **Pre-calculated**: Measures are optimized by Cube.js
+2. **Business Logic**: Includes complex business calculations
+3. **Caching**: Benefits from Cube.js caching layer
+4. **Consistency**: Uses same definitions as dashboards
+5. **Security**: Respects Cube.js security context
+
+## Example Results
+
+```
+✓ total_revenue_measure: 1250000 (≥ 1000000)
+✗ revenue_by_region_west_q1: 45000 (> 50000)
+✓ customer_lifetime_value_premium: 750 (≥ 500)
+```
+
+## Common Measure Types
+
+### Revenue Measures
+```yaml
+- name: monthly_recurring_revenue
+  dataset: Subscriptions
+  type: measure
+  measure: mrr
+  condition: gt
+  threshold: 100000
+```
+
+### User Engagement Measures
+```yaml
+- name: daily_active_users
+  dataset: UserActivity
+  type: measure
+  measure: dau
+  condition: ge
+  threshold: 5000
+```
+
+### Conversion Measures
+```yaml
+- name: conversion_rate
+  dataset: Funnel
+  type: measure
+  measure: conversionRate
+  condition: ge
+  threshold: 0.05
+```
+
+## Error Handling
+
+Common issues and solutions:
+
+- **Cube not found**: Verify cube name matches schema
+- **Measure not found**: Check measure exists in cube definition
+- **API connection**: Ensure Cube.js instance is accessible
+- **Security**: Verify API token and permissions
+
+## Performance Tips
+
+1. **Pre-aggregations**: Use Cube.js pre-aggregations for large datasets
+2. **Caching**: Leverage Cube.js caching for repeated checks
+3. **Partitioning**: Use time-based partitioning in cube schema
+4. **Indexes**: Ensure underlying tables have proper indexes
+
+## Related Checks
+
+- [**Numeric**](./numeric.md) - Raw SQL numeric expressions
+- [**Sum**](./sum.md) - Simple sum aggregations
+- [**Row Count**](./row-count.md) - Basic count validations
+
+========================================================================
+URL: https://weiser.ai/docs/check-types/not-empty.md
+========================================================================
+
+# Not Empty Check
+
+The `not_empty` check validates that the number of NULL values in specified dimensions does not exceed a threshold. This check helps ensure data completeness for critical columns.
+
+## Configuration
+
+| Parameter | Required | Description |
+|-----------|----------|-------------|
+| `name` | Yes | Unique name for the check |
+| `dataset` | Yes | Table name or SQL query |
+| `type` | Yes | Must be `not_empty` |
+| `dimensions` | Yes | List of columns to check for NULL values |
+| `condition` | Yes | Comparison operator (typically `le` for "less than or equal") |
+| `threshold` | No | Maximum allowed NULL count (default: 0) |
+| `filter` | No | WHERE clause conditions |
+
+## Examples
+
+### Basic Not Empty Check
+
+```yaml
+- name: customer_data_completeness
+  dataset: customers
+  type: not_empty
+  dimensions: [customer_id, email]
+  condition: le
+  threshold: 0
+```
+
+This check ensures that both `customer_id` and `email` columns have no NULL values.
+
+### Not Empty with Tolerance
+
+```yaml
+- name: order_fields_mostly_complete
+  dataset: orders
+  type: not_empty
+  dimensions: [customer_id, product_id, order_date]
+  condition: le
+  threshold: 5
+```
+
+This check allows up to 5 NULL values in each of the specified columns.
+
+### Not Empty with Filter
+
+```yaml
+- name: active_user_completeness
+  dataset: users
+  type: not_empty
+  dimensions: [first_name, last_name, email]
+  condition: le
+  threshold: 0
+  filter: status = 'active'
+```
+
+This check ensures active users have complete name and email information.
+
+### Default Threshold
+
+```yaml
+- name: required_fields_check
+  dataset: products
+  type: not_empty
+  dimensions: [product_name, price]
+  condition: le
+  # No threshold specified - defaults to 0
+```
+
+When no threshold is specified, it defaults to 0 (no NULL values allowed).
+
+## Behavior
+
+- **Individual Dimension Checks**: The check runs separately for each dimension specified
+- **Result per Dimension**: Each dimension generates its own check result
+- **Naming Convention**: Results are named as `{original_name}_{dimension}_not_empty`
+
+## Use Cases
+
+- **Data Quality**: Ensure critical fields are populated
+- **Business Rules**: Validate required information is present
+- **ETL Validation**: Check data completeness after transformations
+- **Compliance**: Ensure mandatory fields meet requirements
+
+## Generated SQL
+
+For each dimension, the check generates SQL like:
+
+```sql
+SELECT SUM(CASE WHEN customer_id IS NULL THEN 1 ELSE 0 END)
+FROM customers
+WHERE status = 'active'
+```
+
+## Example Results
+
+If checking `customer_id` and `email` dimensions, you might get results like:
+
+```
+✓ customer_data_completeness_customer_id_not_empty: 0 NULL values (≤ 0)
+✗ customer_data_completeness_email_not_empty: 3 NULL values (≤ 0)
+```
+
+## Related Checks
+
+- [**Not Empty Percentage**](./not-empty-pct.md) - Similar check but using percentage thresholds
+
+========================================================================
+URL: https://weiser.ai/docs/check-types/not-empty-pct.md
+========================================================================
+
+# Not Empty Percentage Check
+
+The `not_empty_pct` check validates that the percentage of NULL values in specified dimensions does not exceed a threshold. This check is similar to `not_empty` but uses percentage-based thresholds instead of absolute counts.
+
+## Configuration
+
+| Parameter | Required | Description |
+|-----------|----------|-------------|
+| `name` | Yes | Unique name for the check |
+| `dataset` | Yes | Table name or SQL query |
+| `type` | Yes | Must be `not_empty_pct` |
+| `dimensions` | Yes | List of columns to check for NULL values |
+| `condition` | Yes | Comparison operator (typically `le` for "less than or equal") |
+| `threshold` | No | Maximum allowed NULL percentage as decimal (0.0-1.0, default: 0.0) |
+| `filter` | No | WHERE clause conditions |
+
+## Examples
+
+### Basic Percentage Check
+
+```yaml
+- name: customer_data_completeness_pct
+  dataset: customers
+  type: not_empty_pct
+  dimensions: [phone, address]
+  condition: le
+  threshold: 0.05  # Allow up to 5% NULL values
+```
+
+This check ensures that no more than 5% of customers have NULL phone or address values.
+
+### Strict Completeness
+
+```yaml
+- name: critical_fields_complete
+  dataset: orders
+  type: not_empty_pct
+  dimensions: [customer_id, product_id]
+  condition: le
+  threshold: 0.0  # No NULL values allowed (0%)
+```
+
+This check requires 100% completeness for critical order fields.
+
+### Higher Tolerance for Optional Fields
+
+```yaml
+- name: optional_fields_check
+  dataset: users
+  type: not_empty_pct
+  dimensions: [middle_name, phone_secondary]
+  condition: le
+  threshold: 0.8  # Allow up to 80% NULL values
+```
+
+This check allows optional fields to have high NULL rates.
+
+### Default Threshold
+
+```yaml
+- name: required_fields_pct
+  dataset: products
+  type: not_empty_pct
+  dimensions: [product_name, price]
+  condition: le
+  # No threshold specified - defaults to 0.0 (0%)
+```
+
+When no threshold is specified, it defaults to 0.0 (no NULL values allowed).
+
+## Threshold Format
+
+Thresholds are specified as decimal values between 0.0 and 1.0:
+
+- `0.0` = 0% (no NULL values allowed)
+- `0.05` = 5% (up to 5% NULL values allowed)
+- `0.1` = 10% (up to 10% NULL values allowed)
+- `0.5` = 50% (up to 50% NULL values allowed)
+- `1.0` = 100% (all values can be NULL)
+
+## Behavior
+
+- **Individual Dimension Checks**: The check runs separately for each dimension specified
+- **Result per Dimension**: Each dimension generates its own check result
+- **Naming Convention**: Results are named as `{original_name}_{dimension}_not_empty_pct`
+- **Percentage Calculation**: Automatically calculates NULL percentage using SQL CAST operations
+
+## Use Cases
+
+- **Data Quality with Tolerance**: Allow some missing data while maintaining quality
+- **Business Rules**: Validate acceptable completeness rates
+- **SLA Monitoring**: Ensure data completeness meets service level agreements
+- **Gradual Improvement**: Set improving targets over time (e.g., reduce from 10% to 5%)
+
+## Generated SQL
+
+For each dimension, the check generates percentage calculation SQL like:
+
+```sql
+SELECT CAST(SUM(CASE WHEN phone IS NULL THEN 1 ELSE 0 END) AS FLOAT) / CAST(COUNT(*) AS FLOAT)
+FROM customers
+WHERE status = 'active'
+```
+
+This automatically calculates the percentage as a decimal (e.g., 0.05 for 5%).
+
+## Example Results
+
+If checking `phone` and `email` dimensions with a 5% threshold, you might get:
+
+```
+✓ customer_completeness_phone_not_empty_pct: 0.03 (3% ≤ 5%)
+✗ customer_completeness_email_not_empty_pct: 0.08 (8% > 5%)
+```
+
+## Comparison with Not Empty Check
+
+| Aspect | not_empty | not_empty_pct |
+|--------|-----------|---------------|
+| Threshold Type | Absolute count | Percentage (0.0-1.0) |
+| Use Case | Fixed datasets | Variable dataset sizes |
+| Example | ≤ 100 NULL values | ≤ 5% NULL values |
+| Scalability | Poor for growing data | Scales with data size |
+
+## Related Checks
+
+- [**Not Empty**](./not-empty.md) - Similar check but using absolute count thresholds
+
+========================================================================
+URL: https://weiser.ai/docs/check-types/anomaly.md
+========================================================================
+
+# Anomaly Detection Check
+
+The `anomaly` check uses statistical methods to detect unusual patterns in your metrics over time. It employs Median Absolute Deviation (MAD) to identify values that deviate significantly from historical patterns.
+
+## Configuration
+
+| Parameter | Required | Description |
+|-----------|----------|-------------|
+| `name` | Yes | Unique name for the check |
+| `dataset` | Yes | Must be `metrics` (references historical data) |
+| `type` | Yes | Must be `anomaly` |
+| `check_id` | Yes | ID of the metric to analyze for anomalies |
+| `condition` | Yes | Usually `between` for z-score bounds |
+| `threshold` | Yes | Z-score range (e.g., [-3.5, 3.5]) |
+
+## How It Works
+
+1. **Historical Data**: Analyzes past values from the metrics store
+2. **MAD Calculation**: Computes Median Absolute Deviation for robust statistics
+3. **Z-Score**: Calculates modified z-score for the latest value
+4. **Threshold Check**: Compares z-score against configured bounds
+
+## Examples
+
+### Basic Anomaly Detection
+
+```yaml
+- name: orders_anomaly_detection
+  dataset: metrics
+  type: anomaly
+  check_id: c5cee10898e30edd1c0dde3f24966b4c47890fcf247e5b630c2c156f7ac7ba22
+  condition: between
+  threshold: [-3.5, 3.5]
+```
+
+This check detects anomalies in order count using 3.5 standard deviations.
+
+### Strict Anomaly Detection
+
+```yaml
+- name: revenue_strict_anomaly
+  dataset: metrics
+  type: anomaly
+  check_id: abc123def456...
+  condition: between
+  threshold: [-2.0, 2.0]
+```
+
+This uses tighter bounds (2 standard deviations) for more sensitive detection.
+
+### Relaxed Anomaly Detection
+
+```yaml
+- name: user_activity_relaxed
+  dataset: metrics
+  type: anomaly
+  check_id: xyz789uvw012...
+  condition: between
+  threshold: [-5.0, 5.0]
+```
+
+This uses wider bounds for less sensitive anomaly detection.
+
+## Getting Check IDs
+
+To find the `check_id` for your metrics:
+
+1. **Run the check first**: Execute the underlying metric check
+2. **Check logs**: The check ID is generated and logged
+3. **Query metrics store**: Look in the metrics table for the check_id
+4. **Generate manually**: Use the same hashing algorithm (SHA256)
+
+```sql
+-- Query to find check IDs
+SELECT DISTINCT check_id, check_name 
+FROM metrics 
+ORDER BY run_time DESC;
+```
+
+## Statistical Method
+
+### Median Absolute Deviation (MAD)
+
+```
+MAD = median(|xi - median(x)|)
+```
+
+### Modified Z-Score
+
+```
+z-score = 0.6745 * (x - median) / MAD
+```
+
+This method is more robust than standard deviation because it's less affected by outliers.
+
+## Minimum Data Requirements
+
+- **Minimum 5 data points** required for statistical analysis
+- **Recommended 30+ points** for reliable anomaly detection
+- **Regular intervals** work best (daily, hourly, etc.)
+
+## Use Cases
+
+- **System Monitoring**: Detect unusual system behavior
+- **Business Metrics**: Identify unexpected changes in KPIs
+- **Data Quality**: Find data pipeline issues
+- **Performance**: Monitor response times and error rates
+- **Security**: Detect unusual access patterns
+
+## Example Results
+
+```
+✓ orders_anomaly_detection: z-score 1.2 (within [-3.5, 3.5])
+✗ revenue_strict_anomaly: z-score -2.8 (outside [-2.0, 2.0])
+✓ user_activity_relaxed: z-score 3.1 (within [-5.0, 5.0])
+```
+
+## Workflow Integration
+
+### Step 1: Set up base metric
+```yaml
+- name: daily_order_count
+  dataset: orders
+  type: row_count
+  condition: gt
+  threshold: 0
+  time_dimension:
+    name: created_at
+    granularity: day
+```
+
+### Step 2: Run and collect data
+```bash
+weiser run config.yaml
+```
+
+### Step 3: Add anomaly detection
+```yaml
+- name: daily_order_count_anomaly
+  dataset: metrics
+  type: anomaly
+  check_id: <generated_check_id>
+  condition: between
+  threshold: [-3.0, 3.0]
+```
+
+## Threshold Guidelines
+
+| Sensitivity | Z-Score Range | Use Case |
+|-------------|---------------|----------|
+| Very Strict | [-1.5, 1.5] | Critical systems |
+| Strict | [-2.0, 2.0] | Important metrics |
+| Normal | [-3.0, 3.0] | Standard monitoring |
+| Relaxed | [-3.5, 3.5] | Noisy data |
+| Very Relaxed | [-5.0, 5.0] | Exploratory analysis |
+
+## Limitations
+
+- **Seasonal Data**: May not handle seasonal patterns well
+- **Trend Data**: Works best with stationary time series
+- **Small Datasets**: Requires sufficient historical data
+- **Sudden Changes**: May flag legitimate business changes as anomalies
+
+## Best Practices
+
+1. **Start Relaxed**: Begin with wider thresholds and tighten as needed
+2. **Monitor Trends**: Consider detrending data for better results
+3. **Regular Review**: Periodically review and adjust thresholds
+4. **Context Matters**: Combine with business context for interpretation
+5. **Multiple Metrics**: Use alongside other validation checks
+
+## Troubleshooting
+
+### Insufficient Data
+```
+Error: Not enough historical data points (need at least 5)
+```
+**Solution**: Run base checks more frequently to build history
+
+### Check ID Not Found
+```
+Error: No data found for check_id: abc123...
+```
+**Solution**: Verify the check_id exists in metrics table
+
+### All Values Flagged
+**Symptoms**: Every value detected as anomaly
+**Solution**: Widen threshold range or check data quality
+
+## Related Checks
+
+- [**Row Count**](./row-count.md) - Base metric for anomaly detection
+- [**Numeric**](./numeric.md) - Custom metrics for anomaly analysis
+- [**Sum**](./sum.md) - Revenue/amount anomaly detection
+
+========================================================================
+URL: https://weiser.ai/docs/evals.md
+========================================================================
+
+# Agent Evals
+
+Weiser can evaluate natural-language-to-SQL / BI agents that sit on top of a semantic layer — question in, SQL + answer out. Like Weiser's own data quality checks, agent evals are configured **declaratively in YAML** (Evals-As-YAML): which tools the agent may call, which prompt and model it runs with, and the test cases themselves all live in the config file, not in code.
+
+Agent evals are a second, complementary capability to data quality checks: checks validate that your data is trustworthy; evals validate that your agent answers questions about that data correctly.
+
+## Core Concepts
+
+| Concept | Config section | What it is |
+| ------- | -------------- | ---------- |
+| **Semantic layer** | `semantic_layers` | The schema the agent queries against — Cube.js or generic SQL introspection over any Weiser datasource |
+| **Agent variant** | `agent_variants` | A declaratively-configured agent shape: framework, model, system prompt, tool set. Variants of the same agent differ by config, not by Python |
+| **Arm** | `eval_suites[].arms` | A named pairing of an agent variant with a semantic layer — one point in a comparison |
+| **Eval suite** | `eval_suites` | One or more arms compared against a shared set of goldens, scored by a set of metrics |
+| **Golden** | `eval_suites[].goldens` / `golden_set` | A single test case: a natural-language question plus optional reference values, expected views, and metadata |
+| **Metric** | `eval_suites[].metrics` | How each run is scored — deterministic checks and/or LLM-judge criteria |
+
+The typical experiment is an **ablation**: two arms that are identical except for one variable (a tool on/off, a prompt change, a model swap) compared against the same goldens. When a suite has exactly two arms, Weiser prints a warning if the arms differ in more than one dimension — comparing arms that change multiple variables at once makes the resulting delta unexplainable.
+
+## How a Run Works
+
+For each arm, each golden, and each repeat:
+
+1. The semantic layer adapter exposes a standard four-tool toolset — `list_views`, `describe_view`, `query`, `submit_answer` — filtered to the variant's `tools` list.
+2. The agent (built by a per-framework factory function you write once) runs the question and produces a trace: tool calls, predicted SQL, query results, final answer, cost, and turn count.
+3. Each configured metric scores the trace (0.0–1.0 per criterion).
+4. Weiser's own DQ checks are wired in: the tables the agent's SQL touched are cross-referenced against your configured `checks:` (or their most recent stored results), and each failing row gets a **failure attribution** — `clean`, `agent`, `data_quality`, or `judge_uncertain`. A wrong answer caused by a known data incident is attributed to data quality, not to the agent.
+5. Results are dual-written: a flat summary row per (golden, arm) into your existing metric store (visible in the Weiser dashboard with no changes), plus a full JSONL trace substrate under `eval_results/` for comparison, gating, and failure analysis.
+
+## Typical Workflow
+
+```bash
+# 1. Validate the eval config without executing anything
+weiser eval-compile evals.yaml --suite my_suite
+
+# 2. Run the suite (train split while iterating)
+weiser eval evals.yaml --suite my_suite --split train -v
+
+# 3. Gauge score stability before trusting a delta
+weiser eval evals.yaml --suite my_suite --split train --repeats 3
+
+# 4. Generate more seed questions from the schema (review before committing)
+weiser eval-synth evals.yaml --semantic-layer my_sl --out evals/synthetic.yaml
+
+# 5. Gate a candidate run against a saved baseline in CI
+weiser eval-gate --candidate candidate.jsonl --baseline baseline.jsonl --arm baseline
+
+# 6. Verify an LLM-judge metric agrees with human labels
+weiser eval-calibrate evals.yaml --suite my_suite --metric-name sql_soundness \
+  --turns turns.jsonl --labels labels.jsonl
+```
+
+## Results
+
+- **Scorecard**: per-arm accuracy (overall / easy / hard), average turns, average cost, hit-limit rate, and a failure-attribution breakdown.
+- **Pairwise delta**: with 2+ arms, the overall-accuracy delta of each arm versus the first arm.
+- **Variance report**: with `--repeats N`, per-question mean/std across identical repeats — a question whose score swings widely is telling you something (prompt ambiguity, a genuinely hard case, or judge noise) before it shows up as a mysterious regression later.
+- **Trace substrate**: `eval_results/{suite}_{split}_{run_id}.jsonl` — one JSON line per (golden, arm, repeat) containing the full result row and agent trace. This is what `eval-gate` reads.
+
+## Documentation
+
+- [Configuration](./configuration.md) — the `agent_variants`, `semantic_layers`, and `eval_suites` sections in detail
+- [Commands](./commands.md) — `weiser eval`, `eval-compile`, `eval-synth`, `eval-gate`, `eval-calibrate`
+- [Metrics](./metrics.md) — deterministic metrics, the LLM judge, and ready-made judge presets
+
+========================================================================
+URL: https://weiser.ai/docs/evals/configuration.md
+========================================================================
+
+# Agent Eval Configuration
+
+Agent evals are configured in the same Weiser YAML file as your data quality checks, using three new optional top-level sections: `agent_variants`, `semantic_layers`, and `eval_suites`. All existing sections (`datasources`, `checks`, `connections`, `includes`, `slack_url`) work unchanged, and environment variable templating (`{{VARIABLE_NAME}}`) applies to the new sections too.
+
+```yaml
+version: 1
+
+datasources:
+  - name: local_db
+    type: postgresql
+    uri: duckdb:///examples/eval_example.duckdb
+
+checks:
+  - name: merchants_not_empty
+    dataset: merchants
+    datasource: local_db
+    type: row_count
+    condition: gt
+    threshold: 0
+
+connections:
+  - name: metricstore
+    type: metricstore
+    db_type: duckdb
+    db_name: eval_example_metricstore.db
+
+semantic_layers:
+  - name: local_sl
+    type: generic_sql
+    datasource: local_db
+
+agent_variants:
+  - name: baseline
+    framework: pydantic_ai
+    entrypoint: examples.eval_agents.build_bi_agent
+    system_prompt: "You are a careful BI analyst. Always verify column names before querying."
+    tools: [list_views, describe_view, query, submit_answer]
+
+  - name: no_describe_view
+    framework: pydantic_ai
+    entrypoint: examples.eval_agents.build_bi_agent
+    system_prompt: "You are a careful BI analyst. Always verify column names before querying."
+    tools: [list_views, query, submit_answer]
+
+eval_suites:
+  - name: lookup_tool_ablation
+    arms:
+      - name: baseline
+        agent_variant: baseline
+        semantic_layer: local_sl
+      - name: no_describe_view
+        agent_variant: no_describe_view
+        semantic_layer: local_sl
+    goldens:
+      - id: merchant_count
+        input: "How many merchants are there in total?"
+        split: train
+        level: easy
+        reference_values:
+          - metric: cnt
+            expected: 3
+            tolerance_pct: 0
+        expected_views: [merchants]
+    metrics:
+      - type: schema_membership
+        threshold: 1.0
+      - type: reference_value_match
+      - type: llm_judge
+        name: sql_soundness
+        threshold: 0.5
+        params:
+          evaluation_params: [input, predicted_sqls]
+          criteria: >
+            Given the question, is the submitted SQL structurally sound and a
+            plausible way to answer it? Do not penalize style choices.
+```
+
+## `semantic_layers`
+
+A semantic layer tells the harness which schema the agent may query against. It references an existing datasource by name and reuses its connection details.
+
+| Parameter | Required | Description |
+| --------- | -------- | ----------- |
+| `name` | Yes | Unique identifier, referenced by `eval_suites[].arms[].semantic_layer` |
+| `type` | Yes | `cube` or `generic_sql` |
+| `datasource` | Yes | Name of an existing `datasources` entry |
+| `meta_api_url` | No | Cube.js only — base URL of the Cube API (e.g. `http://localhost:4000`) |
+| `meta_api_token` | No | Cube.js only — API token; use `{{CUBE_API_TOKEN}}` for secrets |
+
+### Generic SQL
+
+Introspects tables/views directly from any Weiser SQL datasource via SQLAlchemy. No extra parameters needed:
+
+```yaml
+semantic_layers:
+  - name: local_sl
+    type: generic_sql
+    datasource: local_db
+```
+
+### Cube.js
+
+Reads measures/dimensions from the Cube REST meta API; queries still execute through the datasource connection:
+
+```yaml
+semantic_layers:
+  - name: cube_prod
+    type: cube
+    datasource: cube_prod_ds
+    meta_api_url: "{{CUBE_META_URL}}"
+    meta_api_token: "{{CUBE_API_TOKEN}}"
+```
+
+## `agent_variants`
+
+An agent variant is a declaratively-configured agent shape. `entrypoint` is a dotted path to a factory function you write **once per agent family**; every other field is a knob the harness passes into that factory, so variants of the same agent are pure config.
+
+| Parameter | Required | Default | Description |
+| --------- | -------- | ------- | ----------- |
+| `name` | Yes | — | Unique identifier, referenced by `eval_suites[].arms[].agent_variant` |
+| `framework` | Yes | — | Agent framework; currently `pydantic_ai` |
+| `entrypoint` | Yes | — | Dotted path to a factory function, e.g. `examples.eval_agents.build_bi_agent` |
+| `model` | No | framework default | Model string, e.g. `anthropic:claude-sonnet-5` |
+| `system_prompt` | No | — | Inline prompt text or a path to a prompt file (Jinja2-rendered) |
+| `tools` | No | all tools | Subset of `list_views`, `describe_view`, `query`, `submit_answer` to expose |
+| `model_settings` | No | — | Passed through verbatim to the framework (e.g. `temperature`) |
+| `max_turns` | No | `40` | Turn budget per question; hitting it is recorded as a first-class failure category |
+| `extra` | No | — | Framework-specific escape hatch for anything not modeled above |
+
+### The entrypoint factory
+
+For `pydantic_ai`, the entrypoint is a function that takes the variant and the (already-filtered) toolset and returns a built `Agent`. Write one per agent family and reuse it across every variant:
+
+```python
+# examples/eval_agents.py
+from pydantic_ai import Agent
+
+
+def build_bi_agent(variant, tools) -> Agent:
+    return Agent(
+        model=variant.model or "anthropic:claude-sonnet-5",
+        system_prompt=variant.system_prompt or "You are a careful BI analyst.",
+        tools=tools,
+        model_settings=variant.model_settings,
+    )
+```
+
+The tools handed to the factory are already filtered to `variant.tools` by the harness — that is what makes "compare an agent with/without a tool" a pure-YAML experiment. For a single-arm baseline of "whatever is actually in prod right now", the factory can ignore the knobs and return an already-built agent; `extra` carries anything framework-specific.
+
+### Ablation example
+
+The canonical use case — add a tool, compare with/without. Same factory, same prompt, only the tool set differs:
+
+```yaml
+agent_variants:
+  - name: baseline
+    framework: pydantic_ai
+    entrypoint: myapp.eval_agents.build_bi_agent
+    model: anthropic:claude-sonnet-5
+    system_prompt: prompts/bi_system.md
+    tools: [list_views, describe_view, query, submit_answer]
+
+  - name: with_lookup_tool
+    framework: pydantic_ai
+    entrypoint: myapp.eval_agents.build_bi_agent
+    model: anthropic:claude-sonnet-5
+    system_prompt: prompts/bi_system.md
+    tools: [list_views, describe_view, query, submit_answer, lookup_customer]
+```
+
+## `eval_suites`
+
+An eval suite pairs one or more arms against a shared set of goldens, scored by a set of metrics.
+
+| Parameter | Required | Description |
+| --------- | -------- | ----------- |
+| `name` | Yes | Unique suite name, passed to `weiser eval --suite` |
+| `arms` | Yes | One or more `EvalArm` entries; 2+ arms enables the pairwise comparison report |
+| `golden_set` | No* | Path to an external golden file (`.yaml`, `.yml`, or `.jsonl`) |
+| `goldens` | No* | Inline list of goldens; merged with `golden_set` if both are given |
+| `metrics` | Yes | List of metric configurations (see [Metrics](./metrics.md)) |
+| `dq_scope` | No | Explicit dataset names to use for data-quality attribution; default is auto (derived from the tables the agent's SQL touched) |
+
+\* At least one of `golden_set` or `goldens` must provide goldens — `weiser eval-compile` fails otherwise.
+
+### Arms
+
+An arm is a named pairing of an agent variant with a semantic layer:
+
+```yaml
+arms:
+  - name: baseline
+    agent_variant: baseline
+    semantic_layer: local_sl
+  - name: no_describe_view
+    agent_variant: no_describe_view
+    semantic_layer: local_sl
+```
+
+`agent_variant` and `semantic_layer` reference entries by name; `weiser eval-compile` resolves all references and fails on unknown names.
+
+### Goldens
+
+A golden is a single test case. It can be declared inline in the suite or loaded from an external file via `golden_set`. External YAML files are `{goldens: [...]}`-shaped and go through the normal Weiser config loader (Jinja2 templating and `includes:` work); `.jsonl` files hold one golden dict per line for bulk, synthetic, or production-mined sets.
+
+| Parameter | Required | Default | Description |
+| --------- | -------- | ------- | ----------- |
+| `id` | Yes | — | Unique identifier within the suite |
+| `input` | Yes | — | The natural-language question |
+| `split` | No | `train` | `train` or `held_out`; use `--split` to filter a run |
+| `level` | No | `easy` | `easy` or `hard`; the scorecard reports accuracy per level |
+| `source` | No | `hand_written` | `hand_written`, `synthetic`, or `production` |
+| `reference_values` | No | — | Pinned expected values (see below); enables the `reference_value_match` metric |
+| `reference_answer_text` | No | — | A reference natural-language answer; enables `applicable_when: reference_answer_text` judge criteria |
+| `reference_source` | No | — | Provenance of the reference: `human_verified`, `independent_query`, or `unverified` |
+| `expected_views` | No | — | Views the agent should touch; enables the `expected_view_recall` metric |
+
+`reference_values` entries:
+
+| Parameter | Required | Default | Description |
+| --------- | -------- | ------- | ----------- |
+| `metric` | Yes | — | Column name in the agent's final query results (or `row_count`) |
+| `expected` | Yes | — | Expected value |
+| `tolerance_pct` | No | `0.0` | Allowed relative deviation, e.g. `0.01` for 1% |
+| `widget_index` | No | — | Which result row to read the metric from |
+
+Keep the held-out set as its own versioned, git-committed artifact (`golden_set: evals/held_out.yaml`) so each revision stays immutable.
+
+### Data-quality scope
+
+`dq_scope` restricts which configured `checks:` count as data-quality attribution evidence for the suite. By default it is derived automatically: any check whose `dataset` overlaps a table the agent's SQL touched.
+
+## Configuration Includes
+
+The new sections merge identically to existing ones when using `includes:`, so you can keep evals in their own file:
+
+```yaml
+# main.yaml
+version: 1
+includes:
+  - evals/agent_variants.yaml
+  - evals/suites.yaml
+```
+
+## Validate Your Config
+
+```bash
+weiser eval-compile evals.yaml                      # all suites
+weiser eval-compile evals.yaml --suite my_suite     # a single suite
+```
+
+This validates the new sections, resolves all `agent_variant`/`semantic_layer`/`datasource` references, checks that the suite has goldens, and runs the multi-variable lint — without executing anything.
+
+========================================================================
+URL: https://weiser.ai/docs/evals/commands.md
+========================================================================
+
+# Agent Eval Commands
+
+Weiser ships five commands for the agent eval workflow. All commands that read a config file support `--env-file` / `-e` (default `.env`) and `--verbose` / `-v`, the same as `weiser run` and `weiser compile`.
+
+| Command | Purpose |
+| ------- | ------- |
+| `weiser eval` | Run an eval suite |
+| `weiser eval-compile` | Validate eval config without executing |
+| `weiser eval-synth` | Generate synthetic seed questions from a semantic layer's schema |
+| `weiser eval-gate` | CI regression gate comparing a candidate run against a baseline |
+| `weiser eval-calibrate` | Verify an LLM-judge metric against human labels |
+
+## `weiser eval`
+
+Run an agent eval suite.
+
+```bash
+weiser eval <config.yaml> --suite <name> [options]
+```
+
+| Option | Default | Description |
+| ------ | ------- | ----------- |
+| `--suite` | required | Name of the `eval_suites` entry to run |
+| `--split` | all | Filter goldens by split (`train` / `held_out`) |
+| `--dq-mode` | `latest` | `latest`: read the most recent stored DQ check result. `live`: run the configured DQ checks now |
+| `--repeats` | `1` | Run each golden this many times per arm and print a per-question variance report — use to gauge how stable a score is before trusting a single run's delta |
+| `-v`, `--verbose` | off | Print parsed config to stdout |
+| `-e`, `--env-file` | `.env` | Path to a custom `.env` file |
+
+```bash
+# Train split, 3 repeats for a variance report
+weiser eval evals.yaml --suite lookup_tool_ablation --split train --repeats 3 -v
+```
+
+Output: a scorecard table per arm (accuracy overall/easy/hard, average turns, average cost, hit-limit rate), a failure-attribution breakdown for any failing rows, a pairwise delta table when the suite has 2+ arms, and the path to the JSONL trace substrate (`eval_results/{suite}_{split}_{run_id}.jsonl`). Flat summary rows are also written to your metric store and show up in the Weiser dashboard.
+
+## `weiser eval-compile`
+
+Validate the eval config sections (`agent_variants` / `semantic_layers` / `eval_suites`) and resolve their references without executing anything.
+
+```bash
+weiser eval-compile <config.yaml> [--suite <name>] [options]
+```
+
+| Option | Default | Description |
+| ------ | ------- | ----------- |
+| `--suite` | all | Validate a single `eval_suites` entry instead of all |
+| `-v`, `--verbose` | off | Print parsed config to stdout |
+| `-e`, `--env-file` | `.env` | Path to a custom `.env` file |
+
+```bash
+weiser eval-compile evals.yaml --suite lookup_tool_ablation
+```
+
+Fails with a clear error on unknown `agent_variant`, `semantic_layer`, or `datasource` references and on suites with no goldens. Prints a warning (without blocking) when a two-arm suite's arms differ in more than one dimension — e.g. `arms 'baseline' and 'no_describe_view' differ in: tools, model -- are you testing more than one variable at once?`.
+
+## `weiser eval-synth`
+
+Generate synthetic seed questions from a semantic layer's schema, optionally biased toward views with a currently-failing Weiser DQ check. Writes a golden YAML file (`source: synthetic`, `split: train`) directly usable as an `eval_suite`'s `golden_set`.
+
+```bash
+weiser eval-synth <config.yaml> --semantic-layer <name> --out <path> [options]
+```
+
+| Option | Default | Description |
+| ------ | ------- | ----------- |
+| `--semantic-layer` | required | Name of the `semantic_layers` entry to introspect |
+| `--out` | required | Path to write the generated golden YAML file |
+| `--n-per-view` | `3` | Number of synthetic questions to generate per view |
+| `--views` | all | Comma-separated view names to restrict generation to |
+| `--model` | `anthropic:claude-sonnet-5` | Seed-writer model — deliberately separate from both the agent under test and any judge model, to avoid contaminating grading with generation |
+| `--use-dq-hints` / `--no-dq-hints` | on | Bias generated questions toward views with a currently-failing Weiser DQ check |
+| `-v`, `--verbose` | off | Print parsed config to stdout |
+| `-e`, `--env-file` | `.env` | Path to a custom `.env` file |
+
+```bash
+weiser eval-synth evals.yaml --semantic-layer local_sl --out evals/synthetic.yaml
+```
+
+Synthetic goldens never come with `held_out` splits or `reference_values` — both stay human-curated. Review the output before promoting anything to `held_out` or adding reference values.
+
+## `weiser eval-gate`
+
+CI regression gate: compares a candidate run's JSONL trace substrate against a baseline's for one arm, and exits non-zero on regression.
+
+```bash
+weiser eval-gate --candidate <run.jsonl> --baseline <baseline.jsonl> --arm <name> [options]
+```
+
+| Option | Default | Description |
+| ------ | ------- | ----------- |
+| `--candidate` | required | Path to the candidate run's JSONL trace substrate |
+| `--baseline` | required | Path to the baseline run's JSONL trace substrate |
+| `--arm` | required | Arm name to compare (must exist in both files) |
+| `--max-regression` | `3.0` | Max allowed accuracy drop, in percentage points |
+| `--exclude-confounded` / `--include-confounded` | exclude | Exclude data_quality-attributed candidate rows from the regression delta — a live DQ incident shouldn't fail an unrelated agent PR |
+
+```bash
+weiser eval-gate \
+  --candidate eval_results/candidate.jsonl \
+  --baseline eval_results/baseline.jsonl \
+  --arm baseline \
+  --max-regression 3.0
+```
+
+Fails (exit code 1) if accuracy drops more than `--max-regression` percentage points, if the hit-limit rate increases at all (zero tolerance for new hard failures), or if either file has no rows for the arm. Prints a JSON summary (`passed`, `delta_pp`, `excluded_confounded_count`, `reasons`, per-arm summaries) for CI logs.
+
+## `weiser eval-calibrate`
+
+Score a calibration set with an `llm_judge` metric and report agreement with human labels (MAE + Spearman correlation). Exits non-zero if the correlation falls below `--threshold` — an uncalibrated judge should not silently pass.
+
+```bash
+weiser eval-calibrate <config.yaml> --suite <name> --metric-name <name> \
+  --turns <turns.jsonl> --labels <labels.jsonl> [options]
+```
+
+| Option | Default | Description |
+| ------ | ------- | ----------- |
+| `--suite` | required | Name of the `eval_suites` entry the metric is defined in |
+| `--metric-name` | required | Name of the `llm_judge` metric within that suite to calibrate |
+| `--turns` | required | Path to the calibration turns JSONL file |
+| `--labels` | required | Path to the human labels JSONL file |
+| `--threshold` | `0.5` | Minimum acceptable Spearman correlation against human labels |
+| `--out` | `eval_results/calibration` | Directory to write the calibration report JSON to |
+| `-v`, `--verbose` | off | Print parsed config to stdout |
+| `-e`, `--env-file` | `.env` | Path to a custom `.env` file |
+
+The turns file holds pre-recorded agent turns, one JSON object per line:
+
+```json
+{"turn_id": "t1", "golden": {"id": "q1", "input": "..."}, "trace": {"question": "...", "tool_calls": [], "predicted_sqls": ["..."], "final_answer": "...", "query_results": [], "hit_limit": false, "elapsed_s": 1.0, "cost_usd": 0.0, "prompt_tokens": 0, "completion_tokens": 0}}
+```
+
+The labels file holds one row per (turn, criterion):
+
+```json
+{"turn_id": "t1", "criterion": "sql_soundness", "human_score": 0.8, "human_rationale": "sound but suboptimal join", "labeled_by": "paco", "labeled_at": "2026-08-01"}
+```
+
+Typical source of turns: real held-out runs plus deliberately-injected edge cases. The report is written to `--out/{judge_prompt_version}.json` and includes the judge prompt version, so a rubric edit is never silently compared against results scored under the old rubric.
+
+========================================================================
+URL: https://weiser.ai/docs/evals/metrics.md
+========================================================================
+
+# Eval Metrics
+
+Metrics score each (golden, arm, repeat) run. They are declared in a suite's `metrics:` list and resolved by name — no Python needed. Each metric produces a score from 0.0 to 1.0 per criterion; some metrics are only *applicable* when the golden carries the matching reference data, in which case they are skipped (and skipped LLM calls cost nothing).
+
+The **overall score** for a run is the mean of all applicable criteria. The flat metric-store row (and the scorecard) treat a run as passing when the overall score meets the suite's threshold — the `threshold` of the suite's first metric.
+
+```yaml
+metrics:
+  - type: schema_membership
+    threshold: 1.0
+  - type: reference_value_match
+  - type: llm_judge
+    name: sql_soundness
+    threshold: 0.5
+    params:
+      evaluation_params: [input, predicted_sqls]
+      criteria: "Is the SQL structurally sound and a plausible way to answer the question?"
+```
+
+## Common Parameters
+
+| Parameter | Default | Description |
+| --------- | ------- | ----------- |
+| `type` | — | Metric type (see below) |
+| `name` | the type | Display name; required to use the same `type` (e.g. `llm_judge`) more than once in a suite |
+| `threshold` | `0.5` | Score threshold for the criterion |
+| `params` | — | Type-specific configuration (used by `llm_judge`) |
+
+## Deterministic Metrics
+
+No LLM calls, zero cost, fully reproducible.
+
+| Type | What it checks | Applicable when |
+| ---- | -------------- | --------------- |
+| `schema_membership` | Every table and (best-effort) `table.column` referenced in the agent's SQL exists in the semantic layer's schema catalog | The trace contains SQL |
+| `expected_view_recall` | Recall over `golden.expected_views` — did the agent touch the views it needed to? Defensive extra fetches are not penalized | `expected_views` is set |
+| `reference_value_match` | The agent's final query results match `golden.reference_values` within tolerance — catches "queried the adjacent view, got a plausible but wrong number" | `reference_values` is set |
+| `step_efficiency` | Duplicate tool-call (loop) detection: `1 - duplicates / total tool calls` | Always |
+| `hit_limit` | Pass/fail on whether the agent hit its turn budget without submitting an answer — keeps "agent gave up" a first-class, visible category | Always |
+
+```yaml
+metrics:
+  - type: schema_membership
+    threshold: 1.0
+  - type: expected_view_recall
+  - type: reference_value_match
+  - type: step_efficiency
+    threshold: 0.8
+  - type: hit_limit
+```
+
+## LLM Judge
+
+`llm_judge` is a generic declarative LLM-as-judge metric: the rubric lives entirely in `params`, so multiple judge criteria (answer correctness, SQL soundness, groundedness, ...) can be defined in one suite without any new code. The judge is asked directly for a 0.0–1.0 score via structured output.
+
+| `params` key | Required | Description |
+| ------------ | -------- | ----------- |
+| `criteria` | one of | A single rubric statement. Mutually exclusive with `evaluation_steps` |
+| `evaluation_steps` | one of | An ordered list of rubric steps the judge must follow in order |
+| `evaluation_params` | No (default `[input, final_answer]`) | Which context fields to render for the judge — see below |
+| `judge_model` | No (default `anthropic:claude-sonnet-5`) | Model used for judging |
+| `applicable_when` | No | A context field name; the metric (and its LLM call) is skipped unless that field is truthy on the golden/trace |
+
+Available `evaluation_params` values:
+
+| Value | Source |
+| ----- | ------ |
+| `input` | The golden's question |
+| `final_answer` | The agent's final natural-language answer |
+| `predicted_sqls` | All SQL the agent ran |
+| `query_results` | Rows returned by the final query |
+| `reference_answer_text` | The golden's reference answer |
+| `tool_calls` | The agent's tool-call history |
+| `schema_catalog` | The semantic layer's view names |
+
+**Judge-prompt versioning is built in**: every score is stamped with a hash of the rendered judge prompt, so a rubric edit is never silently compared against results scored under the old rubric. Use `weiser eval-calibrate` to verify a judge agrees with human labels before trusting it.
+
+```yaml
+metrics:
+  - type: llm_judge
+    name: sql_soundness
+    threshold: 0.7
+    params:
+      criteria: "Is the SQL structurally sound given the schema, even without live execution?"
+      evaluation_params: [predicted_sqls, schema_catalog]
+      judge_model: anthropic:claude-sonnet-5
+```
+
+### Ready-Made Presets
+
+Three documented, reusable shapes for the common judge criteria (the mechanical parts — schema membership, expected-view recall, reference values — are already covered by the deterministic metrics, so these stay scoped to what is genuinely subjective):
+
+**Answer correctness** — compare the agent's substantive claims against a reference answer. Applicable only when the golden has `reference_answer_text`:
+
+```yaml
+- type: llm_judge
+  name: answer_correctness
+  threshold: 0.7
+  params:
+    applicable_when: reference_answer_text
+    evaluation_params: [input, final_answer, reference_answer_text]
+    criteria: >
+      Compare the agent's substantive claims (numbers, trends, named entities)
+      against the reference answer. Score 0.0 for a material factual or numeric
+      contradiction, 1.0 when the substance matches even if phrasing differs. Do
+      not penalize stylistic differences, extra correct detail, or a different but
+      equally valid framing of the same facts.
+```
+
+**SQL soundness** — is the submitted SQL structurally sound and plausible, given the schema?
+
+```yaml
+- type: llm_judge
+  name: sql_soundness
+  threshold: 0.5
+  params:
+    evaluation_params: [input, predicted_sqls, schema_catalog]
+    criteria: >
+      Given the question and the known schema, is the submitted SQL structurally
+      sound and a plausible way to answer the question? Judge plausibility only --
+      you do not have live execution results here. Do not penalize style choices
+      (aliasing, formatting, CTE vs. subquery).
+```
+
+**Groundedness** — does the final answer accurately reflect the query results, without fabricating or omitting material facts?
+
+```yaml
+- type: llm_judge
+  name: groundedness
+  threshold: 0.7
+  params:
+    evaluation_params: [final_answer, query_results]
+    criteria: >
+      Does the final natural-language answer accurately reflect the query_results
+      returned, without fabricating or omitting material facts? This checks
+      internal consistency only -- it does not check whether query_results are
+      themselves correct.
+```
+
+LLM-judge metrics cost a real LLM call per question — comment them out for a fully deterministic, zero-cost run.
+
+## Combining Metrics
+
+A typical suite mixes cheap deterministic gates with one or two subjective judge criteria:
+
+```yaml
+metrics:
+  - type: schema_membership
+    threshold: 1.0
+  - type: expected_view_recall
+  - type: reference_value_match
+  - type: step_efficiency
+    threshold: 0.5
+  - type: hit_limit
+  - type: llm_judge
+    name: sql_soundness
+    threshold: 0.5
+    params:
+      evaluation_params: [input, predicted_sqls]
+      criteria: >
+        Given the question, is the submitted SQL structurally sound and a
+        plausible way to answer it? Do not penalize style choices.
+```

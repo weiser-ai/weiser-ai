@@ -1,0 +1,37 @@
+# Weiser
+
+> Data Quality and Agent Evals in One Framework.
+
+Weiser is a data quality framework that validates data across your sources and
+evaluates natural-language-to-SQL / BI agents — both configured declaratively in
+YAML. Every page below is also available as raw Markdown by appending `.md` to
+its URL (e.g. `https://weiser.ai/docs/intro.md`).
+
+## Getting Started
+- [Introduction](https://weiser.ai/docs/intro.md): What Weiser is and the data quality problems it solves.
+- [Getting Started](https://weiser.ai/docs/tutorial/getting-started.md): Install Weiser, write a minimal YAML config, and run your first checks in minutes.
+
+## Core Concepts
+- [Configuration](https://weiser.ai/docs/configuration.md): Define data quality checks, datasources, connections, and agent evals in YAML.
+- [Supported Datasources](https://weiser.ai/docs/datasources.md): Setup for PostgreSQL, MySQL, Snowflake, Databricks, BigQuery, Cube.js, and DuckDB.
+
+## Check Types
+- [Check Types](https://weiser.ai/docs/check-types.md): Overview of every data quality check type and when to use it.
+- [Row Count Check](https://weiser.ai/docs/check-types/row-count.md): Validate the number of rows in a dataset.
+- [Numeric Check](https://weiser.ai/docs/check-types/numeric.md): Validate custom numeric SQL expressions against a threshold.
+- [Sum Check](https://weiser.ai/docs/check-types/sum.md): Validate the sum of a numeric column.
+- [Min Check](https://weiser.ai/docs/check-types/min.md): Validate the minimum value of a numeric column.
+- [Max Check](https://weiser.ai/docs/check-types/max.md): Validate the maximum value of a numeric column.
+- [Measure Check](https://weiser.ai/docs/check-types/measure.md): Validate pre-defined Cube.js semantic-layer measures.
+- [Not Empty Check](https://weiser.ai/docs/check-types/not-empty.md): Ensure NULL counts in dimensions stay under a threshold.
+- [Not Empty Percentage Check](https://weiser.ai/docs/check-types/not-empty-pct.md): Ensure NULL percentages in dimensions stay under a threshold.
+- [Anomaly Detection Check](https://weiser.ai/docs/check-types/anomaly.md): Detect unusual metric values over time using MAD-based statistics.
+
+## Agent Evals
+- [Agent Evals](https://weiser.ai/docs/evals.md): Evaluate NL-to-SQL / BI agents declaratively in YAML.
+- [Agent Eval Configuration](https://weiser.ai/docs/evals/configuration.md): Configure agent_variants, semantic_layers, and eval_suites.
+- [Agent Eval Commands](https://weiser.ai/docs/evals/commands.md): The weiser CLI commands for the eval workflow.
+- [Eval Metrics](https://weiser.ai/docs/evals/metrics.md): Metrics that score each run (0.0–1.0) and gate on a threshold.
+
+## Full Documentation
+- [llms-full.txt](https://weiser.ai/llms-full.txt): Every page above concatenated into a single file.
