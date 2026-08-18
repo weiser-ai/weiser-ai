@@ -1,9 +1,9 @@
 
 [project]
 name = "weiser-ai"
-version = "0.2.2"
+version = "0.3.0"
 description = "Enterprise-grade data quality framework with YAML configuration, LLM-friendly design, and advanced statistical validation"
-keywords = ["data-quality", "data-validation", "data-testing", "sql", "yaml", "llm", "ai"]
+keywords = ["data-quality", "data-validation", "data-testing", "sql", "yaml", "llm", "ai", "eval"]
 authors = [
     {name = "Paco Valdez", email = "paco.valdez@berkeley.edu"},
 ]
