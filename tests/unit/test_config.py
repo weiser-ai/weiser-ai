@@ -123,8 +123,8 @@ checks:
     def test_load_config_file_not_found(self):
         """Test error handling when config file is not found."""
         # load_config raises typer.Exit(1) when config file doesn't exist
-        import click
-        with pytest.raises(click.exceptions.Exit):
+        import typer
+        with pytest.raises(typer.Exit):
             load_config("nonexistent.yaml", verbose=False)
 
     def test_load_config_invalid_yaml(self, temp_yaml_file):

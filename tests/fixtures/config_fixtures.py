@@ -2,8 +2,8 @@ import pytest
 from datetime import datetime
 from typing import Dict, Any
 from weiser.loader.models import (
-    BaseConfig, 
-    Check, 
+    BaseConfig,
+    Check,
     Datasource,
     PostgreSQLDatasource,
     MySQLDatasource,
@@ -17,7 +17,16 @@ from weiser.loader.models import (
     DBType,
     MetricStoreType,
     TimeDimension,
-    Granularity
+    Granularity,
+    AgentFramework,
+    AgentVariant,
+    SemanticLayerConfig,
+    SemanticLayerType,
+    ReferenceValue,
+    EvalGolden,
+    MetricConfig,
+    EvalArm,
+    EvalSuite,
 )
 
 
@@ -311,3 +320,111 @@ def sample_check_results():
             "run_time": datetime.now().isoformat()
         }
     ]
+
+
+# --- weiser/evals fixtures ---
+
+@pytest.fixture
+def sample_agent_variant():
+    """Sample agent variant (baseline arm) for testing."""
+    return AgentVariant(
+        name="baseline",
+        framework=AgentFramework.pydantic_ai,
+        entrypoint="tests.fixtures.stub_agents.build_agent",
+        system_prompt="Answer BI questions.",
+        tools=["list_views", "describe_view", "query", "submit_answer"],
+    )
+
+
+@pytest.fixture
+def sample_agent_variant_tool_ablation(sample_agent_variant):
+    """Same agent family as sample_agent_variant, differing only in tools -- used to
+    prove the batching-changes lint stays quiet for a single-variable diff."""
+    return sample_agent_variant.model_copy(
+        update={"name": "with_lookup_tool", "tools": ["list_views", "query", "submit_answer"]}
+    )
+
+
+@pytest.fixture
+def sample_agent_variant_multi_change(sample_agent_variant):
+    """Differs from sample_agent_variant in both tools AND model -- used to prove the
+    batching-changes lint fires for a multi-variable diff."""
+    return sample_agent_variant.model_copy(
+        update={
+            "name": "with_tool_and_model",
+            "tools": ["list_views", "query", "submit_answer"],
+            "model": "openai:gpt-5.5",
+        }
+    )
+
+
+@pytest.fixture
+def sample_semantic_layer_config():
+    """Sample generic-SQL semantic layer config for testing."""
+    return SemanticLayerConfig(
+        name="local_sl",
+        type=SemanticLayerType.generic_sql,
+        datasource="postgres_db",
+    )
+
+
+@pytest.fixture
+def sample_cube_semantic_layer_config():
+    """Sample Cube semantic layer config for testing."""
+    return SemanticLayerConfig(
+        name="cube_sl",
+        type=SemanticLayerType.cube,
+        datasource="cube_db",
+        meta_api_url="https://cube.example.com",
+        meta_api_token="secret-token",
+    )
+
+
+@pytest.fixture
+def sample_eval_golden():
+    """Sample golden/seed test case with a pinned reference value and expected views."""
+    return EvalGolden(
+        id="q1",
+        input="How many merchants are there?",
+        split="train",
+        level="easy",
+        reference_values=[ReferenceValue(metric="cnt", expected=3, tolerance_pct=0.0)],
+        expected_views=["merchants"],
+    )
+
+
+@pytest.fixture
+def sample_metric_config():
+    """Sample deterministic metric config for testing."""
+    return MetricConfig(type="schema_membership", threshold=1.0)
+
+
+@pytest.fixture
+def sample_eval_arm():
+    """Sample eval arm pairing sample_agent_variant with sample_semantic_layer_config."""
+    return EvalArm(name="baseline", agent_variant="baseline", semantic_layer="local_sl")
+
+
+@pytest.fixture
+def sample_eval_suite(sample_eval_arm, sample_eval_golden, sample_metric_config):
+    """Sample single-arm eval suite for testing."""
+    return EvalSuite(
+        name="smoke_suite",
+        arms=[sample_eval_arm],
+        goldens=[sample_eval_golden],
+        metrics=[sample_metric_config],
+    )
+
+
+@pytest.fixture
+def sample_eval_suite_two_arms(sample_eval_golden, sample_metric_config):
+    """Sample two-arm eval suite (tool ablation) for testing comparison/lint logic."""
+    return EvalSuite(
+        name="tool_ablation",
+        arms=[
+            EvalArm(name="baseline", agent_variant="baseline", semantic_layer="local_sl"),
+            EvalArm(name="with_lookup_tool", agent_variant="with_lookup_tool", semantic_layer="local_sl"),
+        ],
+        goldens=[sample_eval_golden],
+        metrics=[sample_metric_config],
+    )

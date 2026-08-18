@@ -15,12 +15,21 @@ def update_namespace(namespace, new_file, verbose):
 
     if namespace is None:
         return new_file
+    merge_keys = (
+        "checks",
+        "datasources",
+        "connections",
+        "agent_variants",
+        "semantic_layers",
+        "eval_suites",
+        "goldens",
+    )
     for key, value in new_file.items():
-        if key in namespace and key in ("checks", "datasources", "connections"):
+        if key in namespace and key in merge_keys:
             namespace[key] = namespace[key] + new_file[key]
         elif key in namespace and key in ("includes"):  # remove duplicates
             namespace[key] = list(set(namespace[key] + new_file[key]))
-        elif key in ("checks", "datasources", "includes", "connections"):
+        elif key in merge_keys or key in ("includes",):
             namespace[key] = new_file[key]
         elif key in ("extras"):
             pass  # ignored keys
@@ -75,7 +84,7 @@ def load_config(
             else:
                 data_loaded = yaml.safe_load(stream)
             if verbose:
-                table.add_row(str(file_path), str(len(data_loaded["checks"])))
+                table.add_row(str(file_path), str(len(data_loaded.get("checks", []))))
 
         if "includes" in data_loaded:
             for included_path in data_loaded["includes"]:

@@ -35,6 +35,12 @@ Weiser is a comprehensive data quality framework that empowers teams to build re
 - **Dashboard Visualization**: Streamlit-based UI for exploring results
 - **Trend Analysis**: Monitor data quality trends and improvements
 
+### 🤖 **Agent Evals**
+- **Evals-As-YAML**: Configure NL-to-SQL / BI agent experiments declaratively — tools, prompts, models, and test cases all in YAML
+- **Arm Comparisons**: Ablate one variable at a time (a tool, a prompt, a model) across arms sharing a golden set
+- **Data-Quality Attribution**: Weiser's own DQ checks are wired into eval scoring, so a wrong answer caused by a data incident is attributed to data quality, not the agent
+- **CI Gating & Judge Calibration**: Regression gates for pipelines and LLM-judge metrics validated against human labels
+
 ### 🎯 **Use Cases**
 
 **Data Engineering Teams**
@@ -84,11 +90,19 @@ Weiser is a comprehensive data quality framework that empowers teams to build re
 - **Integration**: CLI tools for automation and CI/CD
 - **Extensibility**: Plugin architecture for custom checks
 
+### **Agent Evals**
+- **Declarative Experiments**: Agent variants and eval suites defined in YAML
+- **Semantic Layer Adapters**: Cube.js and generic SQL introspection
+- **Deterministic + LLM-Judge Metrics**: Zero-cost checks alongside rubric-based judging
+- **Dual Result Storage**: Dashboard-visible summary rows plus full JSONL traces
+
 ## Getting Started
 
 Ready to improve your data quality? Start with our [Getting Started Guide](./tutorial/getting-started.md) to set up your first data quality checks in minutes.
 
 Explore specific check types in our [Check Types Documentation](./check-types/index.md) or dive into the complete [Configuration Reference](./configuration.md) for advanced setups.
+
+Evaluating an NL-to-SQL or BI agent instead? See [Agent Evals](./evals/index.md).
 
 
 

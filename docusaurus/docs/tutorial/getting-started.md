@@ -16,7 +16,7 @@ You'll need:
 
 - **PostgreSQL database** with sample data
 - **Database credentials** (host, port, username, password, database name)
-- **Python 3.8+**
+- **Python 3.10+**
 
 ## Quick Start
 
@@ -221,6 +221,14 @@ Learn about advanced features in the [Configuration Guide](../configuration.md):
 - Complex filters and dimensions
 - Time-based aggregations
 - Slack notifications
+
+### 🤖 Agent Evals
+
+Evaluating an NL-to-SQL or BI agent that queries your data? Weiser can run declarative agent eval suites — arms, goldens, and metrics in YAML:
+
+- [Agent Evals Overview](../evals/index.md)
+- [Agent Eval Configuration](../evals/configuration.md)
+- [Eval Commands](../evals/commands.md)
 
 ### 🔄 Automation
 

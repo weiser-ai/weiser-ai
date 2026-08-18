@@ -164,6 +164,8 @@ postgres-data/
 .cubestore/
 metricstore.db
 *.db
+*.duckdb
+eval_results/
 minio_data/
 .vscode/
 .npmrc

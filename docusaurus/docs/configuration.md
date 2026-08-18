@@ -1,6 +1,6 @@
 # Configuration
 
-Weiser uses YAML configuration files to define data quality checks, datasources, and connections. This page provides a comprehensive guide to configuring your Weiser setup.
+Weiser uses YAML configuration files to define data quality checks, datasources, and connections — and, optionally, agent evals. This page provides a comprehensive guide to configuring your Weiser setup.
 
 ## Configuration Structure
 
@@ -28,10 +28,46 @@ checks:
     condition: gt
     threshold: 0
 
+# Optional: agent evals (see Agent Evals > Configuration)
+semantic_layers:
+  - name: local_sl
+    type: generic_sql
+    datasource: default
+
+agent_variants:
+  - name: baseline
+    framework: pydantic_ai
+    entrypoint: myapp.eval_agents.build_bi_agent
+    tools: [list_views, describe_view, query, submit_answer]
+
+eval_suites:
+  - name: my_suite
+    arms:
+      - name: baseline
+        agent_variant: baseline
+        semantic_layer: local_sl
+    metrics:
+      - type: reference_value_match
+
 includes:
   - path/to/additional/config.yaml
 
 ```
+
+## Top-Level Sections
+
+| Section | Required | Description |
+| ------- | -------- | ----------- |
+| `datasources` | No* | Database connections checks and evals run against |
+| `checks` | No* | Data quality checks |
+| `connections` | No (defaults to local DuckDB) | Metric store connections |
+| `semantic_layers` | No | Semantic layers for agent evals |
+| `agent_variants` | No | Declarative agent configurations for agent evals |
+| `eval_suites` | No | Agent eval suites (arms, goldens, metrics) |
+| `includes` | No | Additional config files to merge in |
+| `slack_url` | No | Slack webhook for failure notifications |
+
+\* At least one of `checks` or `eval_suites` should be present for a run to do anything.
 
 ## Environment Variables (Recommended)
 Your configuration can use environment variables for sensitive information, weiser will read your .env file and replace the variables in the configuration.
@@ -340,6 +376,10 @@ Configure Slack notifications:
 ```yaml
 slack_url: https://hooks.slack.com/services/T00000000/B00000000/XXXXXXXXXXXXXXXXXXXXXXXX
 ```
+
+## Agent Evals
+
+The `semantic_layers`, `agent_variants`, and `eval_suites` sections configure agent evals — evaluating NL-to-SQL / BI agents against your semantic layer, scored by deterministic and LLM-judge metrics. They are covered in detail in the [Agent Eval Configuration](./evals/configuration.md) guide, alongside the [eval commands](./evals/commands.md) and [metric reference](./evals/metrics.md).
 
 ## Validation
 

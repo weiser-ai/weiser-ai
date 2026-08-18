@@ -11,7 +11,7 @@ import { themes as prismThemes } from "prism-react-renderer";
 /** @type {import('@docusaurus/types').Config} */
 const config = {
   title: "Weiser AI",
-  tagline: "Data Quality and Governance for the Modern Data Stack",
+  tagline: "Data Quality and Agent Evals in One Framework",
   favicon: "img/favicon.ico",
 
   // Set the production url of your site here
@@ -45,6 +45,12 @@ const config = {
     defaultLocale: "en",
     locales: ["en"],
   },
+
+  plugins: [
+    // Serve raw Markdown for docs pages (LLM/agent friendly):
+    //   GET /docs/<path>.md -> text/markdown
+    "./plugins/serveMarkdown",
+  ],
 
   presets: [
     [

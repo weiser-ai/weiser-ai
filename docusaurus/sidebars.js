@@ -41,6 +41,16 @@ const sidebars = {
         'check-types/anomaly',
       ],
     },
+    {
+      type: 'category',
+      label: 'Agent Evals',
+      items: [
+        'evals/index',
+        'evals/configuration',
+        'evals/commands',
+        'evals/metrics',
+      ],
+    },
   ],
 };
 

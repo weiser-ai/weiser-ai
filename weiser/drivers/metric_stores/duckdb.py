@@ -10,7 +10,7 @@ import boto3
 from typing import Any, List, Tuple, Optional
 from sqlmodel import SQLModel, Session, create_engine, select
 from sqlalchemy.engine import Engine
-from sqlalchemy import text
+from sqlalchemy import and_, func, or_, text
 from sqlglot.expressions import Select
 from sqlglot.dialects import DuckDB
 from rich import print
@@ -655,6 +655,40 @@ class DuckDBMetricStore:
             if limit:
                 statement = statement.limit(limit)
 
+            return session.exec(statement).all()
+
+    def get_latest_metrics_for_check(
+        self,
+        check_name: str,
+        dataset: str,
+        datasource: str,
+        limit: Optional[int] = None,
+    ) -> List[MetricRecordDuckDB]:
+        """Get the metrics from the most recent run of a check, matched by
+        (datasource, dataset, name). Dimension/time-dimension checks store one row
+        per dimension value under the name '<check_name>_<dimension values>', so the
+        name is matched exactly or on prefix."""
+        check_matches = and_(
+            MetricRecordDuckDB.datasource == datasource,
+            MetricRecordDuckDB.dataset == dataset,
+            or_(
+                MetricRecordDuckDB.name == check_name,
+                func.strpos(MetricRecordDuckDB.name, f"{check_name}_") == 1,
+            ),
+        )
+        latest_run_id = (
+            select(MetricRecordDuckDB.run_id)
+            .where(check_matches)
+            .order_by(MetricRecordDuckDB.run_time.desc())
+            .limit(1)
+            .scalar_subquery()
+        )
+        with Session(self.engine) as session:
+            statement = select(MetricRecordDuckDB).where(
+                check_matches, MetricRecordDuckDB.run_id == latest_run_id
+            )
+            if limit:
+                statement = statement.limit(limit)
             return session.exec(statement).all()
 
     def get_metrics_for_run(

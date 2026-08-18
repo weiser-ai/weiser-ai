@@ -1,0 +1,105 @@
+# Agent eval example (weiser/evals). See docs/eval_plan.md for the full design.
+#
+# Setup:
+#   python examples/eval_seed_db.py     # creates examples/eval_example.duckdb
+#   export ANTHROPIC_API_KEY=...        # build_bi_agent below defaults to Claude
+#
+# Validate the config without running anything:
+#   weiser eval-compile examples/eval-example.yaml --suite lookup_tool_ablation
+#
+# Run it (train split, so it's safe to iterate on), --repeats prints per-question variance:
+#   weiser eval examples/eval-example.yaml --suite lookup_tool_ablation --split train --repeats 3 -v
+#
+# Generate more train questions from the schema (review before promoting to held_out):
+#   weiser eval-synth examples/eval-example.yaml --semantic-layer local_sl --out examples/eval_synthetic.yaml
+#
+# Gate a candidate run against a saved baseline in CI:
+#   weiser eval-gate --candidate <run>.jsonl --baseline <baseline>.jsonl --arm baseline --max-regression 3.0
+
+version: 1
+
+datasources:
+  - name: local_db
+    type: postgresql # placeholder, ignored: `uri` below fully determines the connection
+    uri: duckdb:///examples/eval_example.duckdb
+
+checks:
+  - name: merchants_not_empty
+    dataset: merchants
+    datasource: local_db
+    type: row_count
+    condition: gt
+    threshold: 0
+
+connections:
+  - name: metricstore
+    type: metricstore
+    db_type: duckdb
+    db_name: examples/eval_example_metricstore.db
+
+semantic_layers:
+  - name: local_sl
+    type: generic_sql
+    datasource: local_db
+
+agent_variants:
+  - name: baseline
+    framework: pydantic_ai
+    entrypoint: examples.eval_agents.build_bi_agent
+    system_prompt: "You are a careful BI analyst. Always verify column names before querying."
+    tools: [list_views, describe_view, query, submit_answer]
+
+  - name: no_describe_view
+    framework: pydantic_ai
+    entrypoint: examples.eval_agents.build_bi_agent # same factory, same prompt --
+    system_prompt: "You are a careful BI analyst. Always verify column names before querying." # only the tool set differs
+    tools: [list_views, query, submit_answer] # describe_view removed
+
+eval_suites:
+  - name: lookup_tool_ablation
+    arms:
+      - name: baseline
+        agent_variant: baseline
+        semantic_layer: local_sl
+      - name: no_describe_view
+        agent_variant: no_describe_view
+        semantic_layer: local_sl
+    goldens:
+      - id: merchant_count
+        input: "How many merchants are there in total?"
+        split: train
+        level: easy
+        reference_values:
+          - metric: cnt
+            expected: 3
+            tolerance_pct: 0
+        expected_views: [merchants]
+      - id: us_merchants
+        input: "How many merchants are based in the US?"
+        split: train
+        level: easy
+        reference_values:
+          - metric: cnt
+            expected: 1
+            tolerance_pct: 0
+        expected_views: [merchants]
+    metrics:
+      - type: schema_membership
+        threshold: 1.0
+      - type: expected_view_recall
+      - type: reference_value_match
+      - type: step_efficiency
+        threshold: 0.5
+      - type: hit_limit
+      # LLM-judge metric (see weiser/evals/metrics/presets.py for this and two more
+      # ready-made shapes: answer_correctness_metric_config, groundedness_metric_config).
+      # Costs a real LLM call per question -- comment out for a fully deterministic,
+      # zero-cost run.
+      - type: llm_judge
+        name: sql_soundness
+        threshold: 0.5
+        params:
+          evaluation_params: [input, predicted_sqls]
+          criteria: >
+            Given the question, is the submitted SQL structurally sound and a plausible
+            way to answer it? Do not penalize style choices.
