@@ -1011,6 +1011,73 @@ class TestCrossSourceChecks:
         assert "email" in results[0]["name"]
         assert "phone" in results[1]["name"]
 
+    def test_cross_source_fill_rate_sql_guards_against_empty_table(
+        self, mock_driver, mock_metric_store
+    ):
+        """get_fill_rate_sql must not divide by COUNT(*) unguarded, else an empty
+        table raises division-by-zero on Postgres/MySQL or yields NaN on DuckDB."""
+        mock_compare_driver = Mock()
+        check_config = Check(
+            name="test_cross_fill_rate_sql",
+            dataset="customers",
+            datasource="primary_db",
+            type=CheckType.cross_source_fill_rate,
+            dimensions=["email"],
+            compare_dataset="customers",
+            compare_datasource="secondary_db",
+            condition=Condition.eq,
+            threshold=0,
+        )
+
+        check = CheckCrossSourceFillRate(
+            "run_123",
+            check_config,
+            mock_driver,
+            "primary_db",
+            mock_metric_store,
+            compare_driver=mock_compare_driver,
+        )
+
+        sql = check.get_fill_rate_sql("email")
+        assert "COUNT(*) = 0" in sql
+        assert "CASE WHEN" in sql
+
+    def test_cross_source_fill_rate_empty_tables_are_a_match(
+        self, mock_driver, mock_metric_store
+    ):
+        """Both sides empty (COUNT(*) = 0) -> fill rate 0.0 on each side, relative
+        diff 0.0, treated as a match rather than raising or producing NaN."""
+        mock_compare_driver = Mock()
+        check_config = Check(
+            name="test_cross_fill_rate_empty",
+            dataset="customers",
+            datasource="primary_db",
+            type=CheckType.cross_source_fill_rate,
+            dimensions=["email"],
+            compare_dataset="customers",
+            compare_datasource="secondary_db",
+            condition=Condition.eq,
+            threshold=0,
+        )
+
+        check = CheckCrossSourceFillRate(
+            "run_123",
+            check_config,
+            mock_driver,
+            "primary_db",
+            mock_metric_store,
+            compare_driver=mock_compare_driver,
+        )
+
+        mock_driver.execute_query.return_value = [(0.0,)]
+        mock_compare_driver.execute_query.return_value = [(0.0,)]
+
+        results = check.run(verbose=False)
+
+        assert len(results) == 1
+        assert results[0]["success"] == True
+        assert results[0]["actual_value"] == 0.0
+
     def test_cross_source_fill_rate_requires_dimensions(
         self, mock_driver, mock_metric_store
     ):

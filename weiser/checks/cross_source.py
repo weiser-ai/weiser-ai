@@ -85,8 +85,9 @@ class CheckCrossSourceRowCount(CrossSourceCheck):
 class CheckCrossSourceFillRate(CrossSourceCheck):
     def get_fill_rate_sql(self, dimension: str) -> str:
         return (
+            "CASE WHEN COUNT(*) = 0 THEN 0.0 ELSE "
             f"CAST(SUM(CASE WHEN {dimension} IS NOT NULL THEN 1 ELSE 0 END) AS FLOAT) "
-            "/ CAST(COUNT(*) AS FLOAT)"
+            "/ CAST(COUNT(*) AS FLOAT) END"
         )
 
     def run(self, verbose: bool) -> List[Any]:
