@@ -216,6 +216,8 @@ connections:
 - `not_empty`: Check for NULL values in dimensions (count-based)
 - `not_empty_pct`: Check for NULL values in dimensions (percentage-based)
 - `anomaly`: Statistical anomaly detection
+- `cross_source_row_count`: Compare row counts for the same table(s) across two datasources (relative difference)
+- `cross_source_fill_rate`: Compare per-column fill-rate for the same table(s) across two datasources (relative difference)
 
 ### Supported Databases
 

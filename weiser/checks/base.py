@@ -20,12 +20,16 @@ class BaseCheck:
         driver: BaseDriver,
         datasource: str,
         metric_store: MetricStoreDB,
+        compare_driver: BaseDriver = None,
     ) -> None:
         self.run_id = run_id
         self.check = check
         self.driver = driver
         self.datasource = datasource
         self.metric_store = metric_store
+        # Only set for cross_source_* checks, which compare `dataset` on `driver`
+        # against `compare_dataset` on `compare_driver`.
+        self.compare_driver = compare_driver
         pass
 
     def snake_case(self, s: str) -> str:

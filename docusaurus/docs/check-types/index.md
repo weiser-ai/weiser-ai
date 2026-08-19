@@ -19,6 +19,10 @@ Weiser supports various types of data quality checks to validate different aspec
 ### Advanced Checks
 - [**Anomaly Detection**](./anomaly.md) - Detects anomalies using statistical methods
 
+### Cross-Source Checks
+- [**Cross-Source Row Count**](./cross-source-row-count.md) - Compares row counts for the same table(s) across two datasources
+- [**Cross-Source Fill Rate**](./cross-source-fill-rate.md) - Compares column fill-rate for the same table(s) across two datasources
+
 ## Common Configuration
 
 All checks share common configuration options:

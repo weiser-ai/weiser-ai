@@ -19,6 +19,8 @@ class CheckType(str, Enum):
     max = "max"
     not_empty = "not_empty"
     not_empty_pct = "not_empty_pct"
+    cross_source_row_count = "cross_source_row_count"
+    cross_source_fill_rate = "cross_source_fill_rate"
 
 
 class DBType(str, Enum):
@@ -81,6 +83,11 @@ class Check(BaseModel):
     datasource: Optional[Union[str, List[str]]] = "default"
     type: Optional[CheckType] = CheckType.numeric
     dataset: Union[str, List[str]]
+
+    # Used by cross_source_* checks to compare `dataset` against a table (or list of
+    # tables, zipped pairwise with `dataset`) living on a second datasource.
+    compare_datasource: Optional[str] = None
+    compare_dataset: Optional[Union[str, List[str]]] = None
 
     description: Optional[str] = None
     measure: Optional[str] = None

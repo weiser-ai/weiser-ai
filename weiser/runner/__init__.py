@@ -31,8 +31,16 @@ def run_checks(
                         f"Check <{check.name}>: Datasource {datasource} is not configured. "
                     )
                 driver = connections[datasource]
+                compare_driver = None
+                if check.compare_datasource:
+                    if check.compare_datasource not in connections:
+                        raise Exception(
+                            f"Check <{check.name}>: compare_datasource "
+                            f"{check.compare_datasource} is not configured. "
+                        )
+                    compare_driver = connections[check.compare_datasource]
                 check_instance = CheckFactory.create_check(
-                    run_id, check, driver, datasource, metric_store
+                    run_id, check, driver, datasource, metric_store, compare_driver=compare_driver
                 )
                 checks.append(check_instance)
         if verbose:
@@ -73,9 +81,17 @@ def generate_sample_data(
                             f"Check <{check.name}>: Datasource {datasource} is not configured. "
                         )
                     driver = connections[datasource]
+                    compare_driver = None
+                    if check.compare_datasource:
+                        if check.compare_datasource not in connections:
+                            raise Exception(
+                                f"Check <{check.name}>: compare_datasource "
+                                f"{check.compare_datasource} is not configured. "
+                            )
+                        compare_driver = connections[check.compare_datasource]
 
                     check_instance = CheckFactory.create_check(
-                        run_id, check, driver, datasource, metric_store
+                        run_id, check, driver, datasource, metric_store, compare_driver=compare_driver
                     )
                     datasets = check_instance.check.dataset
                     if isinstance(datasets, str):
