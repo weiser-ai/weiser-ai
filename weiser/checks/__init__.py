@@ -15,6 +15,7 @@ from weiser.checks.numeric import (
     CheckNotEmptyPct,
 )
 from weiser.checks.anomaly import CheckAnomaly
+from weiser.checks.cross_source import CheckCrossSourceRowCount, CheckCrossSourceFillRate
 
 
 CHECK_TYPE_MAP = {
@@ -27,9 +28,18 @@ CHECK_TYPE_MAP = {
     CheckType.min: CheckMin,
     CheckType.not_empty: CheckNotEmpty,
     CheckType.not_empty_pct: CheckNotEmptyPct,
+    CheckType.cross_source_row_count: CheckCrossSourceRowCount,
+    CheckType.cross_source_fill_rate: CheckCrossSourceFillRate,
 }
 
-CHECK_TYPES = Union[BaseCheck, CheckNumeric, CheckRowCount, CheckAnomaly]
+CHECK_TYPES = Union[
+    BaseCheck,
+    CheckNumeric,
+    CheckRowCount,
+    CheckAnomaly,
+    CheckCrossSourceRowCount,
+    CheckCrossSourceFillRate,
+]
 
 
 class CheckFactory:
@@ -40,8 +50,11 @@ class CheckFactory:
         driver: BaseDriver,
         datasource: str,
         metric_store: MetricStoreDB,
+        compare_driver: BaseDriver = None,
     ) -> CHECK_TYPES:
         check_class = CHECK_TYPE_MAP.get(check.type, None)
         if not check_class:
             raise Exception(f"Check Type {check.type} not implemented yet")
-        return check_class(run_id, check, driver, datasource, metric_store)
+        return check_class(
+            run_id, check, driver, datasource, metric_store, compare_driver=compare_driver
+        )

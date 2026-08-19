@@ -39,6 +39,8 @@ const sidebars = {
         'check-types/not-empty',
         'check-types/not-empty-pct',
         'check-types/anomaly',
+        'check-types/cross-source-row-count',
+        'check-types/cross-source-fill-rate',
       ],
     },
     {

@@ -120,6 +120,29 @@ checks:
     condition: gt
     threshold: 50000
 
+  # Cross-source check: same `orders` table replicated from Postgres to Snowflake,
+  # row counts should match exactly.
+  - name: orders_row_count_parity
+    dataset: orders
+    datasource: postgres_prod
+    type: cross_source_row_count
+    compare_dataset: orders
+    compare_datasource: snowflake_warehouse
+    condition: eq
+    threshold: 0
+
+  # Cross-source check: `email` fill-rate on the replicated `customers` table should
+  # not drift by more than 2% (relative difference) between the two sources.
+  - name: customers_email_fill_rate_parity
+    dataset: customers
+    datasource: postgres_prod
+    type: cross_source_fill_rate
+    dimensions: [email]
+    compare_dataset: customers
+    compare_datasource: mysql_analytics
+    condition: le
+    threshold: 0.02
+
 # Metric store configuration
 connections:
   - name: metricstore

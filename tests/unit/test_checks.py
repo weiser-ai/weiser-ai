@@ -12,6 +12,7 @@ from weiser.checks.numeric import (
     CheckNotEmptyPct,
 )
 from weiser.checks.anomaly import CheckAnomaly
+from weiser.checks.cross_source import CheckCrossSourceRowCount, CheckCrossSourceFillRate
 from weiser.loader.models import Check, CheckType, Condition
 
 # Import fixtures
@@ -750,3 +751,291 @@ class TestThresholdValidation:
         assert len(results) == 1
         assert results[0]["success"] == True  # 3% <= 5%
         assert results[0]["actual_value"] == 0.03
+
+
+class TestCrossSourceChecks:
+    """Test cross_source_row_count and cross_source_fill_rate check types."""
+
+    def test_cross_source_row_count_passes_exact_match(
+        self, mock_driver, mock_metric_store
+    ):
+        """Row counts match exactly -> relative diff 0.0, passes eq/0."""
+        mock_compare_driver = Mock()
+        check_config = Check(
+            name="test_cross_row_count_pass",
+            dataset="orders",
+            datasource="primary_db",
+            type=CheckType.cross_source_row_count,
+            compare_dataset="orders",
+            compare_datasource="secondary_db",
+            condition=Condition.eq,
+            threshold=0,
+        )
+
+        check = CheckCrossSourceRowCount(
+            "run_123",
+            check_config,
+            mock_driver,
+            "primary_db",
+            mock_metric_store,
+            compare_driver=mock_compare_driver,
+        )
+
+        mock_driver.execute_query.return_value = [(100,)]
+        mock_compare_driver.execute_query.return_value = [(100,)]
+
+        results = check.run(verbose=False)
+
+        assert len(results) == 1
+        assert results[0]["success"] == True
+        assert results[0]["actual_value"] == 0.0
+        assert "orders__vs__orders" in results[0]["name"]
+
+    def test_cross_source_row_count_fails_beyond_tolerance(
+        self, mock_driver, mock_metric_store
+    ):
+        """100 vs 80 -> relative diff 0.2, fails le/0.05."""
+        mock_compare_driver = Mock()
+        check_config = Check(
+            name="test_cross_row_count_fail",
+            dataset="orders",
+            datasource="primary_db",
+            type=CheckType.cross_source_row_count,
+            compare_dataset="orders",
+            compare_datasource="secondary_db",
+            condition=Condition.le,
+            threshold=0.05,
+        )
+
+        check = CheckCrossSourceRowCount(
+            "run_123",
+            check_config,
+            mock_driver,
+            "primary_db",
+            mock_metric_store,
+            compare_driver=mock_compare_driver,
+        )
+
+        mock_driver.execute_query.return_value = [(100,)]
+        mock_compare_driver.execute_query.return_value = [(80,)]
+
+        results = check.run(verbose=False)
+
+        assert len(results) == 1
+        assert results[0]["success"] == False
+        assert results[0]["actual_value"] == pytest.approx(0.2)
+
+    def test_cross_source_row_count_multiple_pairs(
+        self, mock_driver, mock_metric_store
+    ):
+        """dataset/compare_dataset lists are zipped pairwise into separate results."""
+        mock_compare_driver = Mock()
+        check_config = Check(
+            name="test_cross_row_count_pairs",
+            dataset=["orders", "customers"],
+            datasource="primary_db",
+            type=CheckType.cross_source_row_count,
+            compare_dataset=["orders", "customers"],
+            compare_datasource="secondary_db",
+            condition=Condition.eq,
+            threshold=0,
+        )
+
+        check = CheckCrossSourceRowCount(
+            "run_123",
+            check_config,
+            mock_driver,
+            "primary_db",
+            mock_metric_store,
+            compare_driver=mock_compare_driver,
+        )
+
+        mock_driver.execute_query.side_effect = [[(100,)], [(50,)]]
+        mock_compare_driver.execute_query.side_effect = [[(100,)], [(50,)]]
+
+        results = check.run(verbose=False)
+
+        assert len(results) == 2
+        assert all(r["success"] for r in results)
+
+    def test_cross_source_row_count_requires_compare_driver(
+        self, mock_driver, mock_metric_store
+    ):
+        """Missing compare_datasource/compare_driver raises a clear error."""
+        check_config = Check(
+            name="test_cross_row_count_missing",
+            dataset="orders",
+            datasource="primary_db",
+            type=CheckType.cross_source_row_count,
+            condition=Condition.eq,
+            threshold=0,
+        )
+
+        check = CheckCrossSourceRowCount(
+            "run_123", check_config, mock_driver, "primary_db", mock_metric_store
+        )
+
+        with pytest.raises(ValueError, match="requires both compare_datasource"):
+            check.run(verbose=False)
+
+    def test_cross_source_row_count_mismatched_pair_lengths(
+        self, mock_driver, mock_metric_store
+    ):
+        """dataset and compare_dataset must be the same length."""
+        mock_compare_driver = Mock()
+        check_config = Check(
+            name="test_cross_row_count_mismatch",
+            dataset=["orders", "customers"],
+            datasource="primary_db",
+            type=CheckType.cross_source_row_count,
+            compare_dataset=["orders"],
+            compare_datasource="secondary_db",
+            condition=Condition.eq,
+            threshold=0,
+        )
+
+        check = CheckCrossSourceRowCount(
+            "run_123",
+            check_config,
+            mock_driver,
+            "primary_db",
+            mock_metric_store,
+            compare_driver=mock_compare_driver,
+        )
+
+        with pytest.raises(ValueError, match="same number of entries"):
+            check.run(verbose=False)
+
+    def test_cross_source_fill_rate_passes(self, mock_driver, mock_metric_store):
+        """Matching fill-rates -> relative diff 0.0, passes eq/0."""
+        mock_compare_driver = Mock()
+        check_config = Check(
+            name="test_cross_fill_rate_pass",
+            dataset="customers",
+            datasource="primary_db",
+            type=CheckType.cross_source_fill_rate,
+            dimensions=["email"],
+            compare_dataset="customers",
+            compare_datasource="secondary_db",
+            condition=Condition.eq,
+            threshold=0,
+        )
+
+        check = CheckCrossSourceFillRate(
+            "run_123",
+            check_config,
+            mock_driver,
+            "primary_db",
+            mock_metric_store,
+            compare_driver=mock_compare_driver,
+        )
+
+        mock_driver.execute_query.return_value = [(0.9,)]
+        mock_compare_driver.execute_query.return_value = [(0.9,)]
+
+        results = check.run(verbose=False)
+
+        assert len(results) == 1
+        assert results[0]["success"] == True
+        assert results[0]["actual_value"] == 0.0
+        assert "customers__vs__customers__email" in results[0]["name"]
+
+    def test_cross_source_fill_rate_fails_beyond_tolerance(
+        self, mock_driver, mock_metric_store
+    ):
+        """0.9 vs 0.7 -> relative diff ~0.222, fails le/0.05."""
+        mock_compare_driver = Mock()
+        check_config = Check(
+            name="test_cross_fill_rate_fail",
+            dataset="customers",
+            datasource="primary_db",
+            type=CheckType.cross_source_fill_rate,
+            dimensions=["email"],
+            compare_dataset="customers",
+            compare_datasource="secondary_db",
+            condition=Condition.le,
+            threshold=0.05,
+        )
+
+        check = CheckCrossSourceFillRate(
+            "run_123",
+            check_config,
+            mock_driver,
+            "primary_db",
+            mock_metric_store,
+            compare_driver=mock_compare_driver,
+        )
+
+        mock_driver.execute_query.return_value = [(0.9,)]
+        mock_compare_driver.execute_query.return_value = [(0.7,)]
+
+        results = check.run(verbose=False)
+
+        assert len(results) == 1
+        assert results[0]["success"] == False
+        assert results[0]["actual_value"] == pytest.approx(2 / 9)
+
+    def test_cross_source_fill_rate_multiple_dimensions(
+        self, mock_driver, mock_metric_store
+    ):
+        """One result per dimension per table pair."""
+        mock_compare_driver = Mock()
+        check_config = Check(
+            name="test_cross_fill_rate_dims",
+            dataset="customers",
+            datasource="primary_db",
+            type=CheckType.cross_source_fill_rate,
+            dimensions=["email", "phone"],
+            compare_dataset="customers",
+            compare_datasource="secondary_db",
+            condition=Condition.eq,
+            threshold=0,
+        )
+
+        check = CheckCrossSourceFillRate(
+            "run_123",
+            check_config,
+            mock_driver,
+            "primary_db",
+            mock_metric_store,
+            compare_driver=mock_compare_driver,
+        )
+
+        mock_driver.execute_query.side_effect = [[(0.9,)], [(0.5,)]]
+        mock_compare_driver.execute_query.side_effect = [[(0.9,)], [(0.5,)]]
+
+        results = check.run(verbose=False)
+
+        assert len(results) == 2
+        assert all(r["success"] for r in results)
+        assert "email" in results[0]["name"]
+        assert "phone" in results[1]["name"]
+
+    def test_cross_source_fill_rate_requires_dimensions(
+        self, mock_driver, mock_metric_store
+    ):
+        """No dimensions specified raises a clear error."""
+        mock_compare_driver = Mock()
+        check_config = Check(
+            name="test_cross_fill_rate_no_dims",
+            dataset="customers",
+            datasource="primary_db",
+            type=CheckType.cross_source_fill_rate,
+            dimensions=[],
+            compare_dataset="customers",
+            compare_datasource="secondary_db",
+            condition=Condition.eq,
+            threshold=0,
+        )
+
+        check = CheckCrossSourceFillRate(
+            "run_123",
+            check_config,
+            mock_driver,
+            "primary_db",
+            mock_metric_store,
+            compare_driver=mock_compare_driver,
+        )
+
+        with pytest.raises(ValueError, match="requires at least one dimension"):
+            check.run(verbose=False)

@@ -265,6 +265,67 @@ class TestRunChecks:
             assert mock_check_factory.call_count == 2
 
 
+    def test_run_checks_resolves_compare_datasource(self):
+        """Test compare_datasource is resolved to a compare_driver and passed to the factory."""
+        check = Check(
+            name="cross_source_check",
+            dataset="orders",
+            type=CheckType.cross_source_row_count,
+            datasource="primary_db",
+            compare_datasource="secondary_db",
+            compare_dataset="orders",
+            condition=Condition.eq,
+            threshold=0,
+        )
+
+        config = BaseConfig(checks=[check], datasources=[], connections=[])
+
+        mock_primary_driver = Mock()
+        mock_secondary_driver = Mock()
+        mock_metric_store = Mock()
+        connections = {
+            "primary_db": mock_primary_driver,
+            "secondary_db": mock_secondary_driver,
+        }
+
+        with patch('weiser.checks.CheckFactory.create_check') as mock_check_factory:
+            mock_check_instance = Mock()
+            mock_check_instance.check.name = "cross_source_check"
+            mock_check_instance.run.return_value = [{"success": True}]
+            mock_check_factory.return_value = mock_check_instance
+
+            run_checks("run_123", config, connections, mock_metric_store, verbose=False)
+
+            mock_check_factory.assert_called_once_with(
+                "run_123",
+                check,
+                mock_primary_driver,
+                "primary_db",
+                mock_metric_store,
+                compare_driver=mock_secondary_driver,
+            )
+
+    def test_run_checks_missing_compare_datasource(self):
+        """Test run_checks raises exception when compare_datasource is not configured."""
+        check = Check(
+            name="cross_source_check",
+            dataset="orders",
+            type=CheckType.cross_source_row_count,
+            datasource="primary_db",
+            compare_datasource="missing_db",
+            compare_dataset="orders",
+            condition=Condition.eq,
+            threshold=0,
+        )
+
+        config = BaseConfig(checks=[check], datasources=[], connections=[])
+        connections = {"primary_db": Mock()}
+        mock_metric_store = Mock()
+
+        with pytest.raises(Exception, match="compare_datasource missing_db is not configured"):
+            run_checks("run_123", config, connections, mock_metric_store, verbose=False)
+
+
 class TestGenerateSampleData:
     """Test generate_sample_data functionality."""
 
