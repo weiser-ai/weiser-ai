@@ -28,6 +28,11 @@ def _resolve_entrypoint(dotted_path: str):
         ) from e
 
 
+# Re-exported for adapters/__init__.py's `custom` framework dispatch, which resolves
+# AgentVariant.adapter_class the same way this module resolves AgentVariant.entrypoint.
+resolve_dotted_path = _resolve_entrypoint
+
+
 class PydanticAIAdapter(AgentAdapter):
     """Reference agent adapter targeting PydanticAI. `variant.entrypoint` is a factory
     written once per agent family: (variant: AgentVariant, tools: list[pydantic_ai.Tool])

@@ -14,12 +14,25 @@ class ToolCall(BaseModel):
     turn: int
 
 
+class WidgetSummary(BaseModel):
+    """Chart/visualization metadata for one widget a BI agent produced, for
+    chart-selection-quality judging (`chart_type_appropriateness`). Optional: agents
+    that only answer in text (no charting step) leave `AgentTrace.widgets` empty."""
+
+    chart_type: str
+    columns: List[str] = []
+    row_count: int = 0
+    title: Optional[str] = None
+
+
 class AgentTrace(BaseModel):
     question: str
     tool_calls: List[ToolCall] = []
     predicted_sqls: List[str] = []
     final_answer: Optional[str] = None
     query_results: Optional[List[dict]] = None
+    widgets: List[WidgetSummary] = []
+    is_dashboard_turn: bool = False
     hit_limit: bool = False
     elapsed_s: float = 0.0
     cost_usd: float = 0.0

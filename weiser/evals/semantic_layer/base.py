@@ -43,6 +43,14 @@ class SemanticLayerAdapter(ABC):
 
 
 _READ_STATEMENTS = (exp.Select, exp.Union, exp.Intersect, exp.Except)
+# exp.AlterTable (sqlglot <25) was renamed to exp.Alter (sqlglot >=25); pinned at
+# sqlglot==20.5.0 here, but a host app importing this module can have a newer sqlglot
+# already installed (dependency resolution takes the highest satisfying version across
+# all requirers) -- resolve whichever name this runtime's sqlglot actually has instead
+# of hard-failing at import time on one specific version.
+_ALTER_STATEMENTS = tuple(
+    t for t in (getattr(exp, "Alter", None), getattr(exp, "AlterTable", None)) if t is not None
+)
 _WRITE_STATEMENTS = (
     exp.Insert,
     exp.Update,
@@ -50,7 +58,7 @@ _WRITE_STATEMENTS = (
     exp.Merge,
     exp.Drop,
     exp.Create,
-    exp.AlterTable,
+    *_ALTER_STATEMENTS,
     exp.Command,
 )
 _WRITE_KEYWORD_RE = re.compile(

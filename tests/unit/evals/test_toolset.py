@@ -35,7 +35,13 @@ class TestCapQueryRows:
         assert result.endswith("LIMIT 50")
 
     def test_non_literal_limit_is_left_unchanged(self):
-        sql = "SELECT * FROM t LIMIT ALL"
+        # A LIMIT whose expression isn't an int literal (e.g. a subquery) hits
+        # _cap_query_rows's except branch and is left alone. `LIMIT ALL` was used here
+        # previously, but newer sqlglot (>=25) parses it as "no limit clause at all"
+        # rather than a present-but-non-literal one -- a different, already-covered
+        # code path (test_adds_limit_when_missing) -- so it no longer exercises this
+        # branch consistently across sqlglot versions.
+        sql = "SELECT * FROM t LIMIT (SELECT 5)"
         assert _cap_query_rows(sql, 50, dialect=Postgres()) == sql
 
     def test_unparseable_sql_is_left_unchanged(self):

@@ -78,6 +78,87 @@ def sql_soundness_metric_config(
     return MetricConfig(type="llm_judge", name="sql_soundness", threshold=threshold, params=params)
 
 
+def chart_type_appropriateness_metric_config(
+    threshold: float = 0.6, judge_model: str = None, chart_rules: str = None
+) -> MetricConfig:
+    """
+    Applicable only when the trace produced at least one widget (`AgentTrace.widgets`).
+    `chart_rules` lets a caller inject its own chart-agent's exact selection rules (the
+    same text the app's own chart-building agent was instructed to follow) so the judge
+    scores against the app's real rules rather than generic aesthetic taste -- pass the
+    app's chart-agent system prompt (or the relevant excerpt) verbatim.
+
+    metrics:
+      - type: llm_judge
+        name: chart_type_appropriateness
+        threshold: 0.6
+        params:
+          applicable_when: widgets
+          evaluation_params: [input, widgets]
+          criteria: >
+            Given the query result shape (columns, row count) and the user's question,
+            is the chosen chart type reasonable? Do not dock points for "a different
+            acceptable option would have been more insightful" when several chart types
+            are all defensible for the same data shape -- judge against what is clearly
+            wrong (e.g. a big-number tile for 3+ independent values, a line chart for
+            multiple unrelated series), not against your own aesthetic preference.
+    """
+    criteria = (
+        'Given the query result shape (columns, row count) and the user\'s question, '
+        "is the chosen chart type reasonable? Do not dock points for \"a different "
+        'acceptable option would have been more insightful" when several chart types '
+        "are all defensible for the same data shape -- judge against what is clearly "
+        "wrong (e.g. a big-number tile for 3+ independent values, a line chart for "
+        "multiple unrelated series), not against your own aesthetic preference."
+    )
+    if chart_rules:
+        criteria += f"\n\nThe app's own chart-selection rules, judge against these specifically:\n{chart_rules}"
+    params = {
+        "applicable_when": "widgets",
+        "evaluation_params": ["input", "widgets"],
+        "criteria": criteria,
+    }
+    if judge_model:
+        params["judge_model"] = judge_model
+    return MetricConfig(
+        type="llm_judge", name="chart_type_appropriateness", threshold=threshold, params=params
+    )
+
+
+def dashboard_composition_metric_config(
+    threshold: float = 0.6, judge_model: str = None
+) -> MetricConfig:
+    """
+    Applicable only on dashboard-building turns (`AgentTrace.is_dashboard_turn`).
+
+    metrics:
+      - type: llm_judge
+        name: dashboard_composition
+        threshold: 0.6
+        params:
+          applicable_when: is_dashboard_turn
+          evaluation_params: [input, tool_calls]
+          criteria: >
+            From the tool calls that mutated the dashboard, is the resulting structure
+            sensible -- no obviously redundant charts, reasonable organization given
+            what the user asked for?
+    """
+    params = {
+        "applicable_when": "is_dashboard_turn",
+        "evaluation_params": ["input", "tool_calls"],
+        "criteria": (
+            "From the tool calls that mutated the dashboard, is the resulting "
+            "structure sensible -- no obviously redundant charts, reasonable "
+            "organization given what the user asked for?"
+        ),
+    }
+    if judge_model:
+        params["judge_model"] = judge_model
+    return MetricConfig(
+        type="llm_judge", name="dashboard_composition", threshold=threshold, params=params
+    )
+
+
 def groundedness_metric_config(
     threshold: float = 0.7, judge_model: str = None
 ) -> MetricConfig:

@@ -138,7 +138,7 @@ async def run_eval_suite(
 
             sl_adapter = SemanticLayerFactory.create(sl_config, datasource)
             schema_catalog = sl_adapter.get_schema()
-            agent_adapter = AgentAdapterFactory.create(variant.framework)
+            agent_adapter = AgentAdapterFactory.create(variant)
             allowed_tools = set(variant.tools) if variant.tools is not None else None
             metrics = [MetricFactory.create(mc) for mc in suite.metrics]
 

@@ -21,6 +21,8 @@ EVALUATION_PARAM_EXTRACTORS = {
     "schema_catalog": lambda tc: (
         sorted(tc.schema_catalog.views.keys()) if tc.schema_catalog else None
     ),
+    "widgets": lambda tc: [w.model_dump() for w in tc.trace.widgets],
+    "is_dashboard_turn": lambda tc: tc.trace.is_dashboard_turn,
 }
 
 
