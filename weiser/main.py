@@ -27,7 +27,7 @@ from weiser.evals.semantic_layer import SemanticLayerFactory
 
 # Initialize Typer
 app = typer.Typer()
-version = "0.3.1"
+version = "0.3.2"
 
 
 @app.callback()

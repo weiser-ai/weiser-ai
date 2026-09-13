@@ -1,4 +1,3 @@
-import importlib
 import time
 from typing import List
 
@@ -6,31 +5,14 @@ from pydantic_ai import Agent, Tool
 from pydantic_ai.exceptions import UsageLimitExceeded
 from pydantic_ai.usage import UsageLimits
 
-from weiser.evals.adapters.base import AgentAdapter
+from weiser.evals.adapters.base import AgentAdapter, resolve_dotted_path
 from weiser.evals.models import AgentTrace
 from weiser.evals.semantic_layer.toolset import ToolSpec, ToolsetState
 from weiser.loader.models import AgentVariant
 
 
 def _resolve_entrypoint(dotted_path: str):
-    module_path, _, attr = dotted_path.rpartition(".")
-    if not module_path:
-        raise ValueError(
-            f"Invalid entrypoint '{dotted_path}': expected 'module.submodule.factory_fn'"
-        )
-    module = importlib.import_module(module_path)
-    try:
-        return getattr(module, attr)
-    except AttributeError as e:
-        raise ImportError(
-            f"Entrypoint '{dotted_path}' not found: module '{module_path}' has no "
-            f"attribute '{attr}'"
-        ) from e
-
-
-# Re-exported for adapters/__init__.py's `custom` framework dispatch, which resolves
-# AgentVariant.adapter_class the same way this module resolves AgentVariant.entrypoint.
-resolve_dotted_path = _resolve_entrypoint
+    return resolve_dotted_path(dotted_path, field_name="entrypoint")
 
 
 class PydanticAIAdapter(AgentAdapter):

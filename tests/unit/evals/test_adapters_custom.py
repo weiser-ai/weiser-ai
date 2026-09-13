@@ -27,6 +27,16 @@ class TestCustomFrameworkDispatch:
         with pytest.raises(Exception, match="adapter_class"):
             AgentAdapterFactory.create(variant)
 
+    def test_bad_adapter_class_error_names_the_right_field(self):
+        variant = AgentVariant(
+            name="baseline",
+            framework=AgentFramework.custom,
+            entrypoint="tests.fixtures.stub_agents.build_agent",
+            adapter_class="tests.fixtures.stub_adapters.DoesNotExist",
+        )
+        with pytest.raises(ImportError, match="adapter_class"):
+            AgentAdapterFactory.create(variant)
+
     def test_pydantic_ai_framework_still_dispatches_via_map(self):
         variant = AgentVariant(
             name="baseline",
