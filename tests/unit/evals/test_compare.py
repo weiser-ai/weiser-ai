@@ -1,4 +1,5 @@
 from weiser.evals.compare import lint_arms, summarize_arm
+from weiser.loader.models import AgentFramework, AgentVariant, EvalArm, EvalSuite
 
 from tests.fixtures.config_fixtures import *  # noqa: F401,F403
 
@@ -30,6 +31,69 @@ class TestLintArms:
 
     def test_unresolved_variant_is_tolerated(self, sample_eval_suite_two_arms):
         assert lint_arms(sample_eval_suite_two_arms, {}) == []
+
+    def test_custom_adapter_class_diff_counts_as_a_variable(self):
+        """Two `framework: custom` arms that also differ in model must be flagged --
+        adapter_class identity is itself a comparison dimension, not something the lint
+        can ignore just because every AgentVariant field PydanticAIAdapter cares about
+        (tools/system_prompt/model_settings) happens to match."""
+        suite = EvalSuite(
+            name="custom_ablation",
+            arms=[
+                EvalArm(name="router_a", agent_variant="router_a", semantic_layer="sl"),
+                EvalArm(name="router_b", agent_variant="router_b", semantic_layer="sl"),
+            ],
+            metrics=[],
+        )
+        variants = {
+            "router_a": AgentVariant(
+                name="router_a",
+                framework=AgentFramework.custom,
+                entrypoint="myapp.eval_agents.build_router_config",
+                adapter_class="myapp.eval_adapter.AdapterOne",
+                model="model-a",
+            ),
+            "router_b": AgentVariant(
+                name="router_b",
+                framework=AgentFramework.custom,
+                entrypoint="myapp.eval_agents.build_router_config",
+                adapter_class="myapp.eval_adapter.AdapterTwo",
+                model="model-b",
+            ),
+        }
+        warnings = lint_arms(suite, variants)
+        assert len(warnings) == 1
+        assert "adapter_class" in warnings[0]
+        assert "model" in warnings[0]
+
+    def test_custom_adapter_class_diff_alone_is_quiet(self):
+        """A single-variable adapter_class swap (same model/tools/etc.) should not
+        warn -- mirrors test_single_variable_diff_is_quiet for the new field."""
+        suite = EvalSuite(
+            name="custom_ablation",
+            arms=[
+                EvalArm(name="router_a", agent_variant="router_a", semantic_layer="sl"),
+                EvalArm(name="router_b", agent_variant="router_b", semantic_layer="sl"),
+            ],
+            metrics=[],
+        )
+        variants = {
+            "router_a": AgentVariant(
+                name="router_a",
+                framework=AgentFramework.custom,
+                entrypoint="myapp.eval_agents.build_router_config",
+                adapter_class="myapp.eval_adapter.AdapterOne",
+                model="model-a",
+            ),
+            "router_b": AgentVariant(
+                name="router_b",
+                framework=AgentFramework.custom,
+                entrypoint="myapp.eval_agents.build_router_config",
+                adapter_class="myapp.eval_adapter.AdapterTwo",
+                model="model-a",
+            ),
+        }
+        assert lint_arms(suite, variants) == []
 
 
 class TestSummarizeArm:

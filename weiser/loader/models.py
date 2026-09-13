@@ -213,6 +213,7 @@ class MetricStore(BaseModel):
 
 class AgentFramework(str, Enum):
     pydantic_ai = "pydantic_ai"
+    custom = "custom"
     # strands = "strands"  # planned, not implemented yet
 
 
@@ -226,11 +227,18 @@ class AgentVariant(BaseModel):
     """A declaratively-configured agent shape ("arm"). `entrypoint` is a dotted path to
     a factory function written once per agent family; every other field is a knob the
     harness passes into that factory so that variants of the same agent are pure config.
+
+    `adapter_class` is only used when `framework == AgentFramework.custom`: a dotted
+    path to a class implementing `weiser.evals.adapters.base.AgentAdapter`, for agent
+    pipelines that don't fit PydanticAI's single-`Agent`/standardized-toolset shape
+    (e.g. a multi-agent router with its own tools). `entrypoint` keeps its usual meaning
+    for that adapter's own `build()` to resolve however it needs to.
     """
 
     name: str
     framework: AgentFramework
     entrypoint: str
+    adapter_class: Optional[str] = None
     model: Optional[str] = None
     system_prompt: Optional[str] = None
     tools: Optional[List[str]] = None
@@ -272,6 +280,7 @@ class EvalGolden(BaseModel):
         Literal["human_verified", "independent_query", "unverified"]
     ] = None
     expected_views: Optional[List[str]] = None
+    extra: Optional[dict] = None
 
 
 class MetricConfig(BaseModel):

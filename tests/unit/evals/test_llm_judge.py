@@ -7,10 +7,12 @@ from pydantic_ai.models.function import AgentInfo, FunctionModel
 from weiser.evals.metrics.llm_judge import LLMJudgeMetric
 from weiser.evals.metrics.presets import (
     answer_correctness_metric_config,
+    chart_type_appropriateness_metric_config,
+    dashboard_composition_metric_config,
     groundedness_metric_config,
     sql_soundness_metric_config,
 )
-from weiser.evals.models import AgentTrace, EvalTestCase
+from weiser.evals.models import AgentTrace, EvalTestCase, WidgetSummary
 from weiser.loader.models import EvalGolden, MetricConfig
 
 
@@ -25,9 +27,21 @@ def _scripted_judge(call_log, score=1.0, reason="ok"):
     return FunctionModel(fn)
 
 
-def _test_case(input_="How many merchants?", final_answer="3", reference_answer_text=None):
+def _test_case(
+    input_="How many merchants?",
+    final_answer="3",
+    reference_answer_text=None,
+    widgets=None,
+    is_dashboard_turn=False,
+):
     golden = EvalGolden(id="q1", input=input_, reference_answer_text=reference_answer_text)
-    trace = AgentTrace(question=input_, final_answer=final_answer, predicted_sqls=["SELECT 1"])
+    trace = AgentTrace(
+        question=input_,
+        final_answer=final_answer,
+        predicted_sqls=["SELECT 1"],
+        widgets=widgets or [],
+        is_dashboard_turn=is_dashboard_turn,
+    )
     return EvalTestCase(golden=golden, arm="baseline", trace=trace)
 
 
@@ -157,6 +171,56 @@ class TestLLMJudgeMetric:
         assert cs.score == 0.42
 
 
+class TestChartAndDashboardEvaluationParams:
+    def test_widgets_param_renders_and_applicable_when_gates_on_it(self):
+        call_log = []
+        metric = LLMJudgeMetric(
+            MetricConfig(
+                type="llm_judge",
+                name="chart_type_appropriateness",
+                params={
+                    "criteria": "c",
+                    "applicable_when": "widgets",
+                    "evaluation_params": ["input", "widgets"],
+                    "judge_model": _scripted_judge(call_log, score=1.0),
+                },
+            )
+        )
+        # No widgets -> not applicable, no LLM call.
+        cs = asyncio.run(metric.a_measure(_test_case(widgets=[])))
+        assert cs.applicable is False
+        assert call_log == []
+
+        # A widget present -> applicable, and its summary reaches the judge prompt.
+        widget = WidgetSummary(chart_type="bar", columns=["region", "cnt"], row_count=5)
+        cs = asyncio.run(metric.a_measure(_test_case(widgets=[widget])))
+        assert cs.applicable is True
+        assert len(call_log) == 1
+        assert "bar" in call_log[0]
+
+    def test_is_dashboard_turn_param_gates_dashboard_composition(self):
+        call_log = []
+        metric = LLMJudgeMetric(
+            MetricConfig(
+                type="llm_judge",
+                name="dashboard_composition",
+                params={
+                    "criteria": "c",
+                    "applicable_when": "is_dashboard_turn",
+                    "evaluation_params": ["input", "tool_calls"],
+                    "judge_model": _scripted_judge(call_log, score=1.0),
+                },
+            )
+        )
+        cs = asyncio.run(metric.a_measure(_test_case(is_dashboard_turn=False)))
+        assert cs.applicable is False
+        assert call_log == []
+
+        cs = asyncio.run(metric.a_measure(_test_case(is_dashboard_turn=True)))
+        assert cs.applicable is True
+        assert len(call_log) == 1
+
+
 class TestPresets:
     def test_answer_correctness_preset_shape(self):
         config = answer_correctness_metric_config()
@@ -174,16 +238,41 @@ class TestPresets:
         assert config.name == "groundedness"
         assert "query_results" in config.params["evaluation_params"]
 
+    def test_chart_type_appropriateness_preset_shape(self):
+        config = chart_type_appropriateness_metric_config()
+        assert config.name == "chart_type_appropriateness"
+        assert config.params["applicable_when"] == "widgets"
+        assert "widgets" in config.params["evaluation_params"]
+
+    def test_chart_type_appropriateness_preset_embeds_chart_rules(self):
+        config = chart_type_appropriateness_metric_config(chart_rules="Prefer bar for breakdowns.")
+        assert "Prefer bar for breakdowns." in config.params["criteria"]
+
+    def test_dashboard_composition_preset_shape(self):
+        config = dashboard_composition_metric_config()
+        assert config.name == "dashboard_composition"
+        assert config.params["applicable_when"] == "is_dashboard_turn"
+        assert "tool_calls" in config.params["evaluation_params"]
+
     def test_presets_are_valid_llm_judge_metrics(self):
         call_log = []
+        widget = WidgetSummary(chart_type="bar", columns=["region", "cnt"], row_count=5)
         for builder in (
             answer_correctness_metric_config,
             sql_soundness_metric_config,
             groundedness_metric_config,
+            chart_type_appropriateness_metric_config,
+            dashboard_composition_metric_config,
         ):
             config = builder()
             config.params["judge_model"] = _scripted_judge(call_log, score=1.0)
             metric = LLMJudgeMetric(config)
             asyncio.run(
-                metric.a_measure(_test_case(reference_answer_text="There are 3 merchants."))
+                metric.a_measure(
+                    _test_case(
+                        reference_answer_text="There are 3 merchants.",
+                        widgets=[widget],
+                        is_dashboard_turn=True,
+                    )
+                )
             )

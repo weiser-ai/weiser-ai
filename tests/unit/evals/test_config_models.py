@@ -149,3 +149,35 @@ class TestEvalConfigParsing:
         merged = update_namespace(namespace, new_file, verbose=False)
         assert len(merged["agent_variants"]) == 2
         assert merged["semantic_layers"] == [{"name": "sl"}]
+
+    def test_custom_framework_variant_round_trips(self, tmp_path):
+        cfg_file = tmp_path / "config.yaml"
+        cfg_file.write_text(
+            """
+version: 1
+agent_variants:
+  - name: baseline
+    framework: custom
+    adapter_class: myapp.eval_adapter.MyRouterAdapter
+    entrypoint: myapp.eval_agents.build_router_config
+
+eval_suites:
+  - name: smoke
+    arms: [{name: baseline, agent_variant: baseline, semantic_layer: local_sl}]
+    goldens:
+      - id: q1
+        input: "How many merchants are there?"
+        extra: {tags: ["smoke"], reference_semantic_sql: "SELECT 1"}
+    metrics: [{type: reference_value_match}]
+"""
+        )
+        raw = load_config(str(cfg_file), verbose=False)
+        config = BaseConfig(**raw)
+
+        variant = config.agent_variants[0]
+        assert variant.framework == "custom"
+        assert variant.adapter_class == "myapp.eval_adapter.MyRouterAdapter"
+        assert variant.entrypoint == "myapp.eval_agents.build_router_config"
+
+        golden = config.eval_suites[0].goldens[0]
+        assert golden.extra == {"tags": ["smoke"], "reference_semantic_sql": "SELECT 1"}

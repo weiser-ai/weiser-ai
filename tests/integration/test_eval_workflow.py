@@ -87,6 +87,56 @@ class TestEvalWorkflowIntegration:
             assert row["result"]["overall_score"] == 1.0
             assert row["trace"]["final_answer"] == "There are 3 merchants."
 
+    def test_custom_framework_arm_runs_via_adapter_class(
+        self, tmp_path, sample_eval_golden, mock_semantic_layer, mock_metric_store
+    ):
+        config = BaseConfig(
+            checks=[],
+            datasources=[
+                PostgreSQLDatasource(name="local_db", uri="duckdb:///:memory:")
+            ],
+            semantic_layers=[
+                SemanticLayerConfig(
+                    name="local_sl", type=SemanticLayerType.generic_sql, datasource="local_db"
+                )
+            ],
+            agent_variants=[
+                AgentVariant(
+                    name="custom_baseline",
+                    framework=AgentFramework.custom,
+                    entrypoint="tests.fixtures.stub_agents.build_agent",
+                    adapter_class="tests.fixtures.stub_adapters.StubCustomAdapter",
+                ),
+            ],
+        )
+        suite = EvalSuite(
+            name="custom_adapter_suite",
+            arms=[
+                EvalArm(name="custom_baseline", agent_variant="custom_baseline", semantic_layer="local_sl"),
+            ],
+            goldens=[sample_eval_golden],
+            metrics=[MetricConfig(type="reference_value_match")],
+        )
+
+        with patch(
+            "weiser.evals.runner.SemanticLayerFactory.create", return_value=mock_semantic_layer
+        ):
+            outcome = asyncio.run(
+                run_eval_suite(
+                    "run1",
+                    suite,
+                    config,
+                    connections={},
+                    metric_store=mock_metric_store,
+                    results_dir=str(tmp_path / "eval_results"),
+                )
+            )
+
+        rows = outcome.results_by_arm["custom_baseline"]
+        assert len(rows) == 1
+        assert rows[0].overall_score == 1.0
+        assert rows[0].failure_attribution == "clean"
+
     def test_missing_agent_variant_raises(self, sample_eval_golden, mock_metric_store):
         config = BaseConfig(
             checks=[],

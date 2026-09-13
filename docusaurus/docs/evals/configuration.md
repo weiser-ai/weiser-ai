@@ -118,14 +118,38 @@ An agent variant is a declaratively-configured agent shape. `entrypoint` is a do
 | Parameter | Required | Default | Description |
 | --------- | -------- | ------- | ----------- |
 | `name` | Yes | — | Unique identifier, referenced by `eval_suites[].arms[].agent_variant` |
-| `framework` | Yes | — | Agent framework; currently `pydantic_ai` |
+| `framework` | Yes | — | Agent framework; `pydantic_ai` or `custom` |
 | `entrypoint` | Yes | — | Dotted path to a factory function, e.g. `examples.eval_agents.build_bi_agent` |
+| `adapter_class` | Only for `custom` | — | Dotted path to a class implementing `weiser.evals.adapters.base.AgentAdapter`, e.g. `myapp.eval_adapter.MyRouterAdapter` |
 | `model` | No | framework default | Model string, e.g. `anthropic:claude-sonnet-5` |
 | `system_prompt` | No | — | Inline prompt text or a path to a prompt file (Jinja2-rendered) |
 | `tools` | No | all tools | Subset of `list_views`, `describe_view`, `query`, `submit_answer` to expose |
 | `model_settings` | No | — | Passed through verbatim to the framework (e.g. `temperature`) |
 | `max_turns` | No | `40` | Turn budget per question; hitting it is recorded as a first-class failure category |
 | `extra` | No | — | Framework-specific escape hatch for anything not modeled above |
+
+### `framework: custom` — agents that don't fit PydanticAI's standardized toolset
+
+`pydantic_ai`'s adapter drives a single `Agent` through Weiser's own 4-tool toolset
+(`list_views`/`describe_view`/`query`/`submit_answer`), tracked via a shared state
+object those tool closures populate. That doesn't fit every real agent — e.g. a
+multi-agent router with its own tools and its own multi-step pipeline. `framework:
+custom` bypasses the standardized toolset entirely: `adapter_class` points at a class
+implementing `AgentAdapter` (`build()`/`run()`), which is free to call whatever the real
+system actually is and translate its own tool calls, SQL, and answer into an
+`AgentTrace` however makes sense. `entrypoint` keeps its usual meaning for that
+adapter's own `build()` to resolve however it needs to (typically a factory returning a
+small config bundle, the same "one factory per agent family, knobs in YAML" convention
+`pydantic_ai` variants use):
+
+```yaml
+agent_variants:
+  - name: baseline
+    framework: custom
+    adapter_class: myapp.eval_adapter.MyRouterAdapter
+    entrypoint: myapp.eval_agents.build_router_config
+    model: anthropic:claude-sonnet-5
+```
 
 ### The entrypoint factory
 
@@ -214,6 +238,7 @@ A golden is a single test case. It can be declared inline in the suite or loaded
 | `reference_answer_text` | No | — | A reference natural-language answer; enables `applicable_when: reference_answer_text` judge criteria |
 | `reference_source` | No | — | Provenance of the reference: `human_verified`, `independent_query`, or `unverified` |
 | `expected_views` | No | — | Views the agent should touch; enables the `expected_view_recall` metric |
+| `extra` | No | — | Free-form provenance (tags, notes, a reference-SQL string, ...); not consumed by any metric, round-trips through the model for human review |
 
 `reference_values` entries:
 

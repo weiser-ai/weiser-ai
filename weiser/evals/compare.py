@@ -10,7 +10,19 @@ from weiser.loader.models import AgentVariant, EvalSuite
 
 console = Console()
 
-VARIANT_COMPARE_FIELDS = ["model", "system_prompt", "tools", "model_settings"]
+VARIANT_COMPARE_FIELDS = [
+    "model",
+    "system_prompt",
+    "tools",
+    "model_settings",
+    # Identity of the agent being built is itself a comparison dimension: two arms on
+    # different frameworks, different adapter_class (framework: custom), or different
+    # entrypoint factories are not "the same agent, one knob changed" even if every
+    # other field matches.
+    "framework",
+    "entrypoint",
+    "adapter_class",
+]
 
 
 def load_result_rows(path: str) -> List[dict]:
