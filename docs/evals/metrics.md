@@ -72,6 +72,8 @@ Available `evaluation_params` values:
 | `reference_answer_text` | The golden's reference answer |
 | `tool_calls` | The agent's tool-call history |
 | `schema_catalog` | The semantic layer's view names |
+| `widgets` | Chart/visualization metadata the agent produced (`AgentTrace.widgets` — chart type, columns, row count, title) |
+| `is_dashboard_turn` | Whether this trace came from a dashboard-building turn (`AgentTrace.is_dashboard_turn`) |
 
 **Judge-prompt versioning is built in**: every score is stamped with a hash of the rendered judge prompt, so a rubric edit is never silently compared against results scored under the old rubric. Use `weiser eval-calibrate` to verify a judge agrees with human labels before trusting it.
 
@@ -135,6 +137,37 @@ Three documented, reusable shapes for the common judge criteria (the mechanical 
       returned, without fabricating or omitting material facts? This checks
       internal consistency only -- it does not check whether query_results are
       themselves correct.
+```
+
+**Chart type appropriateness** — is the chosen chart type reasonable for the query result shape? Applicable only when the trace has at least one widget (`AgentTrace.widgets`). Optionally accepts a `chart_rules` argument when built via `chart_type_appropriateness_metric_config(chart_rules=...)`, so the judge can be handed the app's own chart-agent's exact selection rules instead of generic taste:
+
+```yaml
+- type: llm_judge
+  name: chart_type_appropriateness
+  threshold: 0.6
+  params:
+    applicable_when: widgets
+    evaluation_params: [input, widgets]
+    criteria: >
+      Given the query result shape (columns, row count) and the user's question, is
+      the chosen chart type reasonable? Do not dock points for "a different acceptable
+      option would have been more insightful" when several chart types are all
+      defensible for the same data shape.
+```
+
+**Dashboard composition** — from the tool calls that mutated a dashboard, is the resulting structure sensible? Applicable only on dashboard-building turns (`AgentTrace.is_dashboard_turn`):
+
+```yaml
+- type: llm_judge
+  name: dashboard_composition
+  threshold: 0.6
+  params:
+    applicable_when: is_dashboard_turn
+    evaluation_params: [input, tool_calls]
+    criteria: >
+      From the tool calls that mutated the dashboard, is the resulting structure
+      sensible -- no obviously redundant charts, reasonable organization given what
+      the user asked for?
 ```
 
 LLM-judge metrics cost a real LLM call per question — comment them out for a fully deterministic, zero-cost run.
