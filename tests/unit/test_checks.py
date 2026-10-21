@@ -13,6 +13,7 @@ from weiser.checks.numeric import (
 )
 from weiser.checks.anomaly import CheckAnomaly
 from weiser.checks.cross_source import CheckCrossSourceRowCount, CheckCrossSourceFillRate
+from weiser.checks import CrossSourceRowCountResult
 from weiser.loader.models import Check, CheckType, Condition
 
 # Import fixtures
@@ -755,6 +756,25 @@ class TestThresholdValidation:
 
 class TestCrossSourceChecks:
     """Test cross_source_row_count and cross_source_fill_rate check types."""
+
+    def test_cross_source_row_count_result_model(self):
+        result = CrossSourceRowCountResult(
+            success=True,
+            postgres_row_count=100,
+            snowflake_row_count=None,
+            relative_diff=0.0,
+            weiser_run_id="run_123",
+            weiser_check_id="check_123",
+        )
+
+        assert result.model_dump() == {
+            "success": True,
+            "postgres_row_count": 100,
+            "snowflake_row_count": None,
+            "relative_diff": 0.0,
+            "weiser_run_id": "run_123",
+            "weiser_check_id": "check_123",
+        }
 
     def test_cross_source_row_count_passes_exact_match(
         self, mock_driver, mock_metric_store

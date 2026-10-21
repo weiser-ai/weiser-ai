@@ -16,6 +16,7 @@ from weiser.checks.numeric import (
 )
 from weiser.checks.anomaly import CheckAnomaly
 from weiser.checks.cross_source import CheckCrossSourceRowCount, CheckCrossSourceFillRate
+from weiser.checks.results import CrossSourceRowCountResult
 
 
 CHECK_TYPE_MAP = {
